@@ -1,0 +1,433 @@
+(() => {
+"use strict";
+const CFG = window.TMRD_CONFIG || {};
+const DEMO = !CFG.SUPABASE_URL || CFG.SUPABASE_URL.includes("COLE_AQUI") || !window.supabase;
+const TABLE = CFG.TABELA || "tmrd_registros";
+
+/* ---------- ícones dos tópicos ---------- */
+const P = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const TOPICS = [
+  {k:"quimicos", n:"Produtos Químicos", i:P('<path d="M9 3h6M10 3v6L4.5 18.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3"/><path d="M7 15h10"/>')},
+  {k:"confinado", n:"Espaço Confinado", i:P('<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M10 9v9M14 9v9M10 12h4M10 15h4"/>')},
+  {k:"quente", n:"Trabalho à Quente", i:P('<path d="M12 21c4 0 7-2.7 7-6.5 0-3.5-2.5-5.5-3.5-8.5-1.5 2-2.5 3-3.5 3 0-2.5-1-5-3-6 0 4-4 6-4 11.5C5 18.3 8 21 12 21Z"/><path d="M12 21c-1.7 0-3-1.2-3-3 0-2 2-3 2-5 1.5 1 4 3 4 5 0 1.8-1.3 3-3 3Z"/>')},
+  {k:"icamento", n:"Grandes Içamentos", i:P('<path d="M4 21V5h14M4 5l4 4M18 5v6"/><path d="M18 11a2 2 0 1 1-2 2"/><path d="M2 21h8"/>')},
+  {k:"energias", n:"Energias Perigosas", i:P('<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/>')},
+  {k:"altura", n:"Trabalho em Altura", i:P('<path d="M7 3v18M15 3v18M7 7h8M7 12h8M7 17h8"/><path d="M19 9l2-2-2-2"/>')},
+  {k:"telhado", n:"Trabalho em Telhado", i:P('<path d="M2 12 12 4l10 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-5h6v5"/>')},
+  {k:"equip", n:"Intervenção em Equipamentos", i:P('<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9 7 7M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/>')},
+  {k:"logistica", n:"Logística Interna", i:P('<path d="M3 17V8h7l3 5v4"/><path d="M13 17h4V4"/><path d="M17 14h4"/><circle cx="6.5" cy="18" r="2"/><circle cx="12" cy="18" r="2"/>')},
+  {k:"terceiros", n:"Trabalhos Terceirizados", i:P('<path d="M5 14a7 7 0 0 1 14 0"/><path d="M3 14h18v2H3z"/><path d="M12 7V4M9 8l-1-2M15 8l1-2"/>')},
+  {k:"outros", n:"Outros", i:P('<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>')},
+];
+const TMAP = Object.fromEntries(TOPICS.map(t => [t.k, t]));
+const CONTROLES = ["PT emitida","APR / ART","Bloqueio LOTO","Isolamento de área","Vigia / observador","EPI específico","DDS realizado"];
+const AREAS = CFG.AREAS || [];
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const store = { get(k){ try { return localStorage.getItem(k); } catch(_) { return null; } }, set(k,v){ try { localStorage.setItem(k,v); } catch(_){} } };
+const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => { const r = Math.random()*16|0; return (c === "x" ? r : (r&3|8)).toString(16); }));
+
+/* ---------- identificação do aparelho (para "meus lançamentos") ---------- */
+let DEVICE = store.get("tmrd.device"); if (!DEVICE) { DEVICE = uuid(); store.set("tmrd.device", DEVICE); }
+
+/* ---------- datas ---------- */
+const pad = (n) => String(n).padStart(2,"0");
+const ymd = (d=new Date()) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const hm = (d=new Date()) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const fmtDate = (s) => { const [y,m,d] = String(s).split("-"); return `${d}/${m}/${y}`; };
+const DIAS = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
+function guessTurno(){ const h = new Date().getHours(); return h>=6&&h<14 ? "1º" : h>=14&&h<22 ? "2º" : "3º"; }
+
+/* ---------- estado ---------- */
+const DIAS3 = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+const addDays = (s, n) => { const [y,m,d] = s.split("-").map(Number); return ymd(new Date(y, m-1, d+n)); };
+const dowOf = (s) => { const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d).getDay(); };
+const ddmm = (s) => { const [,m,d] = s.split("-"); return `${d}/${m}`; };
+const state = { today: ymd(), topic:null, turno:guessTurno(), ctrls:new Set(), sb:null, dia:ymd(),
+  mine:[], board:[], krows:[], kDays:30, weekOffset:0, confirmDel:null, demo:[] };
+
+/* ---------- camada de dados (Supabase ou demonstração) ---------- */
+const fromDb = (r) => ({ id:r.id, data:r.data, criadoEm:r.criado_em, topico:r.topico, topicoOutro:r.topico_outro||"", atividade:r.atividade,
+  area:r.area||"", local:r.local||"", turno:r.turno||"", inicio:(r.inicio||"").slice(0,5), fim:(r.fim||"").slice(0,5),
+  controles:r.controles||[], responsavel:r.responsavel||"", deviceId:r.device_id||"" });
+const toDb = (r) => ({ id:r.id, data:r.data, criado_em:r.criadoEm, topico:r.topico, topico_outro:r.topicoOutro||null, atividade:r.atividade,
+  area:r.area, local:r.local||null, turno:r.turno||null, inicio:r.inicio||null, fim:r.fim||null,
+  controles:r.controles, responsavel:r.responsavel||null, device_id:r.deviceId });
+
+const api = {
+  async range(from, to){
+    if (DEMO) return state.demo.filter(r => r.data >= from && r.data <= to);
+    const { data, error } = await state.sb.from(TABLE).select("*").gte("data", from).lte("data", to).order("criado_em");
+    if (error) throw error; return data.map(fromDb);
+  },
+  async mine(from){
+    if (DEMO) return state.demo.filter(r => r.deviceId === DEVICE && r.data >= from);
+    const { data, error } = await state.sb.from(TABLE).select("*").eq("device_id", DEVICE).gte("data", from).order("data");
+    if (error) throw error; return data.map(fromDb);
+  },
+  async insert(row){
+    if (DEMO) { state.demo.push(row); return; }
+    const { error } = await state.sb.from(TABLE).upsert(toDb(row), { onConflict:"id", ignoreDuplicates:true });
+    if (error) throw error;
+  },
+  async remove(id){
+    if (DEMO) { state.demo = state.demo.filter(x => x.id !== id); return; }
+    const { error } = await state.sb.from(TABLE).delete().eq("id", id); if (error) throw error;
+  },
+};
+
+/* ---------- fila offline: lançamentos feitos sem sinal ---------- */
+const outbox = { read(){ try { return JSON.parse(store.get("tmrd.outbox") || "[]"); } catch(_) { return []; } }, write(a){ store.set("tmrd.outbox", JSON.stringify(a)); } };
+let flushing = false;
+async function flushOutbox(){
+  if (flushing || DEMO) return; const q = outbox.read(); if (!q.length) return;
+  flushing = true; const left = [];
+  for (const row of q) { try { await api.insert(row); } catch(_) { left.push(row); } }
+  outbox.write(left); flushing = false;
+  if (q.length !== left.length) { toast(`${q.length-left.length} lançamento(s) pendente(s) enviado(s)`); refresh(); }
+  paintPending();
+}
+function paintPending(){
+  const n = outbox.read().length, el = $("pending");
+  el.hidden = !n; el.textContent = n ? `${n} lançamento(s) aguardando sinal para enviar` : "";
+}
+
+/* ---------- relógio ---------- */
+function tick(){
+  const d = new Date();
+  $("clk").textContent = hm(d);
+  $("dt").textContent = `${DIAS[d.getDay()]} · ${pad(d.getDate())}/${pad(d.getMonth()+1)}`;
+  if (state.today !== ymd()) { state.today = ymd(); paintDia(); refresh(); }
+}
+
+/* ---------- formulário ---------- */
+function paintDia(){
+  const opts = [[state.today,"Hoje"],[addDays(state.today,1),"Amanhã"],[addDays(state.today,2),DIAS3[dowOf(addDays(state.today,2))]]];
+  const isOther = !opts.some(o => o[0] === state.dia);
+  $("dia").innerHTML = opts.map(([d,l]) => `<button type="button" data-d="${d}" aria-pressed="${d === state.dia}">${l}<small>${ddmm(d)}</small></button>`).join("")
+    + `<button type="button" data-d="outra" aria-pressed="${isOther}">Outra<small>${isOther ? ddmm(state.dia) : "data"}</small></button>`;
+  $("diaOutra").min = state.today; $("diaOutra").hidden = !isOther;
+}
+$("dia").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.d === "outra") { $("diaOutra").hidden = false; $("diaOutra").value = addDays(state.today,3); state.dia = $("diaOutra").value; paintDia(); $("diaOutra").focus(); }
+  else { state.dia = b.dataset.d; paintDia(); }
+});
+$("diaOutra").addEventListener("change", () => { if ($("diaOutra").value) { state.dia = $("diaOutra").value; paintDia(); } });
+paintDia();
+
+$("topics").innerHTML = TOPICS.map(t => `<button type="button" class="tp" role="radio" aria-checked="false" data-k="${t.k}">${t.i}<span>${t.n === "Outros" ? "Outros (especificar)" : t.n}</span></button>`).join("");
+$("topics").addEventListener("click", e => {
+  const b = e.target.closest(".tp"); if (!b) return;
+  state.topic = b.dataset.k;
+  $("topics").querySelectorAll(".tp").forEach(x => x.setAttribute("aria-checked", x === b ? "true" : "false"));
+  $("outroTxt").hidden = state.topic !== "outros";
+  if (state.topic === "outros") $("outroTxt").focus();
+});
+$("controles").innerHTML = CONTROLES.map(c => `<button type="button" class="chip" aria-pressed="false">${c}</button>`).join("");
+$("controles").addEventListener("click", e => {
+  const b = e.target.closest(".chip"); if (!b) return;
+  const on = b.getAttribute("aria-pressed") !== "true"; b.setAttribute("aria-pressed", on);
+  on ? state.ctrls.add(b.textContent) : state.ctrls.delete(b.textContent);
+});
+$("areasList").innerHTML = AREAS.map(a => `<option value="${esc(a)}">`).join("");
+function paintTurno(){ $("turno").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.dataset.t === state.turno)); }
+$("turno").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; state.turno = state.turno === b.dataset.t ? "" : b.dataset.t; paintTurno(); });
+paintTurno();
+$("area").value = store.get("tmrd.area") || ""; $("resp").value = store.get("tmrd.resp") || "";
+
+function toast(msg, bad){ const t = $("toast"); t.textContent = msg; t.classList.toggle("bad", !!bad); t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 2800); }
+
+function resetForm(){
+  $("atividade").value = ""; $("local").value = ""; $("hIni").value = ""; $("hFim").value = ""; $("outroTxt").value = "";
+  state.topic = null; state.ctrls.clear();
+  $("topics").querySelectorAll(".tp").forEach(x => x.setAttribute("aria-checked","false"));
+  $("controles").querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed","false"));
+  $("outroTxt").hidden = true;
+}
+
+/* área digitada vira a forma oficial da lista, se bater (ex.: "expedicao" → "Expedição") */
+const norm = (s) => String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").trim().toLowerCase();
+function canonArea(a){ const n = norm(a); return AREAS.find(x => norm(x) === n) || a.trim(); }
+
+$("frm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const err = $("err"); err.textContent = "";
+  const atividade = $("atividade").value.trim(), area = canonArea($("area").value);
+  if (!state.dia || state.dia < state.today) { err.textContent = "Escolha a data da tarefa (hoje ou dias seguintes)."; return; }
+  if (!area) { err.textContent = "Informe a área."; $("area").focus(); return; }
+  if (!state.topic) { err.textContent = "Escolha o tópico da tarefa."; $("topics").scrollIntoView({behavior:"smooth", block:"center"}); return; }
+  if (state.topic === "outros" && !$("outroTxt").value.trim()) { err.textContent = "Especifique o tópico em “Outros”."; $("outroTxt").focus(); return; }
+  if (!atividade) { err.textContent = "Descreva a atividade."; $("atividade").focus(); return; }
+  if (!$("resp").value.trim()) { err.textContent = "Informe o responsável."; $("resp").focus(); return; }
+  const row = {
+    id: uuid(), data: state.dia, criadoEm: new Date().toISOString(),
+    topico: state.topic, topicoOutro: state.topic === "outros" ? $("outroTxt").value.trim() : "",
+    atividade, area, local: $("local").value.trim(),
+    turno: state.turno, inicio: $("hIni").value, fim: $("hFim").value,
+    controles: [...state.ctrls], responsavel: $("resp").value.trim(), deviceId: DEVICE,
+  };
+  $("area").value = area;
+  store.set("tmrd.area", area); store.set("tmrd.resp", row.responsavel);
+  $("send").disabled = true;
+  try {
+    await api.insert(row);
+    resetForm(); toast(DEMO ? "Enviado (modo demonstração)" : `Tarefa enviada ao painel · ${ddmm(row.data)}`);
+    refresh();
+  } catch (x) {
+    const offline = !navigator.onLine || /fetch|network/i.test(String(x?.message||x));
+    if (offline) { outbox.write([...outbox.read(), row]); resetForm(); paintPending(); toast("Sem sinal: lançamento guardado e será enviado sozinho", true); }
+    else err.textContent = "O servidor recusou o envio: " + (x?.message || "erro desconhecido");
+  } finally { $("send").disabled = false; }
+});
+
+/* ---------- textos ---------- */
+function topicLabel(r){ return r.topico === "outros" && r.topicoOutro ? `Outros · ${r.topicoOutro}` : (TMAP[r.topico]?.n || r.topico || "Outros"); }
+function horario(r){ return r.inicio ? (r.fim ? `${r.inicio}–${r.fim}` : `${r.inicio}`) : ""; }
+const EMPTY_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3 22 20H2Z"/><path d="M12 10v4M12 17v.01"/></svg>';
+const sortRows = (a,b) => a.data.localeCompare(b.data) || (a.inicio||"99").localeCompare(b.inicio||"99") || String(a.criadoEm).localeCompare(String(b.criadoEm));
+function dayLabel(d){ return d === state.today ? "Hoje" : d === addDays(state.today,1) ? "Amanhã" : `${DIAS3[dowOf(d)]} ${ddmm(d)}`; }
+
+/* ---------- meus lançamentos ---------- */
+function renderMine(){
+  const rows = [...state.mine].sort(sortRows);
+  $("mineCount").textContent = rows.length ? `${rows.length} de hoje em diante` : "";
+  $("mineList").innerHTML = rows.length ? rows.map(r => {
+    const t = TMAP[r.topico] || TMAP.outros;
+    const del = state.confirmDel === r.id
+      ? `<span style="display:flex;gap:6px"><button class="mini confirm" data-a="del" data-id="${r.id}">Excluir</button><button class="mini cancel" data-a="nodel">Cancelar</button></span>`
+      : `<button class="mini" data-a="ask" data-id="${r.id}">Excluir</button>`;
+    return `<article class="card"><div class="ic">${t.i}</div>
+      <div class="body"><div class="tt">${esc(topicLabel(r))}</div><div class="ac">${esc(r.atividade)}</div>
+        <div class="meta"><span>Área <b>${esc(r.area)}</b></span>${r.local ? `<span>${esc(r.local)}</span>` : ""}${horario(r) ? `<span class="mono">${esc(horario(r))}</span>` : ""}${r.turno ? `<span>Turno <b>${esc(r.turno)}</b></span>` : ""}</div></div>
+      <div class="side"><span class="dpill ${r.data === state.today ? "today" : ""}">${esc(dayLabel(r.data))}</span>${del}</div></article>`;
+  }).join("") : `<div class="empty">${EMPTY_IC}<b>Nenhuma tarefa lançada por este celular</b>Escolha a data, a área e o tópico, descreva a atividade e toque em Enviar. Ela aparece no painel da TV na hora.</div>`;
+}
+
+/* ---------- painel: grade Área × Dias ---------- */
+function weekDays(){ const s = addDays(state.today, state.weekOffset*7); return Array.from({length:7}, (_,i) => addDays(s,i)); }
+function areaRows(rows){
+  const list = [...AREAS]; const seen = new Set(list.map(norm));
+  [...new Set(rows.map(r => r.area).filter(Boolean))].sort((a,b) => a.localeCompare(b,"pt-BR")).forEach(a => { if (!seen.has(norm(a))) { seen.add(norm(a)); list.push(a); } });
+  return list;
+}
+function renderBoard(){
+  const days = weekDays(), rows = state.board;
+  $("pTitle").innerHTML = state.weekOffset === 0 ? `Próximos 7 dias <span>${ddmm(days[0])} a ${ddmm(days[6])}</span>` : `Semana <span>${ddmm(days[0])} a ${ddmm(days[6])}</span>`;
+  const today = rows.filter(r => r.data === state.today);
+  $("kAll").textContent = today.length;
+  $("kArea").textContent = new Set(today.map(r => norm(r.area))).size;
+  const byTopic = {}; today.forEach(r => byTopic[r.topico] = (byTopic[r.topico]||0)+1);
+  $("heat").innerHTML = TOPICS.map(t => `<span class="ht ${byTopic[t.k] ? "on" : ""}">${t.i}${t.n}${byTopic[t.k] ? ` <b>${byTopic[t.k]}</b>` : ""}</span>`).join("");
+
+  const grid = {}; rows.forEach(r => { const k = norm(r.area) + "|" + r.data; (grid[k] ||= []).push(r); });
+  const areas = areaRows(rows);
+  const head = `<colgroup><col class="c-area">${days.map(() => "<col>").join("")}</colgroup>
+    <thead><tr><th class="area">Área</th>${days.map(d => `<th class="${d === state.today ? "today" : ""}"><span class="d">${d === state.today ? "Hoje" : d === addDays(state.today,1) ? "Amanhã" : DIAS3[dowOf(d)]}</span><span class="s">${ddmm(d)}</span></th>`).join("")}</tr></thead>`;
+  const body = areas.length ? areas.map(a => `<tr><th class="area" scope="row">${esc(a)}</th>${days.map(d => {
+      const items = (grid[norm(a)+"|"+d] || []).sort(sortRows);
+      const cls = `cell${d === state.today ? " today" : ""}${d < state.today ? " past" : ""}`;
+      return `<td class="${cls}">${items.length ? items.map(r => {
+        const t = TMAP[r.topico] || TMAP.outros;
+        const meta = [r.local, horario(r), r.turno && `T${r.turno}`, r.responsavel].filter(Boolean).map(esc).join(" · ");
+        return `<div class="task" title="${esc(r.atividade)}">${t.i}<span class="t">${esc(topicLabel(r))}</span><span class="x">${esc(r.atividade)}</span>${meta ? `<span class="m">${meta}</span>` : ""}</div>`;
+      }).join("") : `<div class="none">—</div>`}</td>`;
+    }).join("")}</tr>`).join("")
+    : `<tr><td colspan="8"><div class="empty" style="border:0">${EMPTY_IC}<b>Nenhuma tarefa nesta semana</b>Os lançamentos feitos pelos supervisores no celular aparecem aqui automaticamente, na linha da área e na coluna do dia.</div></td></tr>`;
+  $("mx").innerHTML = head + `<tbody>${body}</tbody>`;
+}
+
+let refreshing = null;
+async function refresh(){
+  if (refreshing) return refreshing;
+  refreshing = (async () => {
+    try {
+      const days = weekDays();
+      const kFrom = addDays(state.today, -(state.kDays-1));
+      const [board, mine, krows] = await Promise.all([api.range(days[0], days[6]), api.mine(state.today), api.range(kFrom, state.today)]);
+      state.board = board; state.mine = mine; state.krows = krows;
+      setLive(true, DEMO ? "Demonstração" : "Ao vivo");
+    } catch(_) { setLive(false, "Sem conexão"); }
+    renderMine(); renderBoard(); renderKpi();
+  })();
+  try { await refreshing; } finally { refreshing = null; }
+}
+
+document.addEventListener("click", async e => {
+  const b = e.target.closest(".mini"); if (!b) return;
+  const a = b.dataset.a, id = b.dataset.id;
+  if (a === "ask") { state.confirmDel = id; renderMine(); return; }
+  if (a === "nodel") { state.confirmDel = null; renderMine(); return; }
+  if (a === "del") {
+    state.confirmDel = null;
+    try { await api.remove(id); toast("Tarefa excluída"); refresh(); }
+    catch (x) { toast("Não foi possível excluir: " + (x?.message || "tente de novo"), true); renderMine(); }
+  }
+});
+
+/* ---------- navegação ---------- */
+function show(v){
+  const tv = v === "tv"; const view = tv ? "painel" : v;
+  document.body.classList.toggle("tv", tv);
+  if (tv && state.weekOffset !== 0) { state.weekOffset = 0; refresh(); }
+  $("v-lancar").hidden = view !== "lancar"; $("v-painel").hidden = view !== "painel"; $("v-indicadores").hidden = view !== "indicadores";
+  document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.v === view));
+  if (tv) keepAwake();
+}
+function route(){ const h = location.hash.slice(1); show(["lancar","painel","tv","indicadores"].includes(h) ? h : (innerWidth >= 1000 ? "painel" : "lancar")); }
+document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => { location.hash = t.dataset.v; }));
+$("tvOn").addEventListener("click", () => { location.hash = "tv"; document.documentElement.requestFullscreen?.().catch(()=>{}); });
+$("tvOff").addEventListener("click", () => { location.hash = "painel"; if (document.fullscreenElement) document.exitFullscreen().catch(()=>{}); });
+$("wPrev").addEventListener("click", () => { state.weekOffset--; refresh(); });
+$("wNext").addEventListener("click", () => { state.weekOffset++; refresh(); });
+$("wToday").addEventListener("click", () => { state.weekOffset = 0; refresh(); });
+addEventListener("hashchange", route);
+let lock = null;
+async function keepAwake(){ try { if (!lock && navigator.wakeLock) { lock = await navigator.wakeLock.request("screen"); lock.addEventListener("release", () => lock = null); } } catch(_){} }
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { refresh(); if (document.body.classList.contains("tv")) keepAwake(); } });
+
+/* ---------- exportar no formato da planilha: Área na coluna A, um dia por coluna ---------- */
+$("csv").addEventListener("click", () => {
+  const days = weekDays(), q = (v) => `"${String(v ?? "").replace(/"/g,'""')}"`;
+  const grid = {}; state.board.forEach(r => { const k = norm(r.area)+"|"+r.data; (grid[k] ||= []).push(r); });
+  const lines = [["Área", ...days.map(d => `${DIAS3[dowOf(d)]} ${fmtDate(d)}`)].map(q).join(";")];
+  areaRows(state.board).forEach(a => lines.push([a, ...days.map(d => (grid[norm(a)+"|"+d] || []).sort(sortRows).map(r => `[${topicLabel(r)}] ${r.atividade}`).join("\n"))].map(q).join(";")));
+  const blob = new Blob(["﻿" + lines.join("\r\n")], {type:"text/csv;charset=utf-8"});
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `TMRD_${days[0]}_a_${days[6]}.csv`;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+});
+
+/* ---------- instalar como app ---------- */
+let deferredPrompt = null;
+addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferredPrompt = e; $("install").hidden = false; });
+$("install").addEventListener("click", async () => {
+  if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; $("install").hidden = true; }
+});
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent), standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+if (isIOS && !standalone && !store.get("tmrd.iosHint")) { $("iosHint").hidden = false; }
+$("iosClose").addEventListener("click", () => { $("iosHint").hidden = true; store.set("tmrd.iosHint","1"); });
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(()=>{});
+
+/* ---------- indicadores ---------- */
+$("kRange").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  state.kDays = +b.dataset.r;
+  $("kRange").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  refresh();
+});
+const pct = (n) => `${Math.round(n*100)}%`;
+const tone = (p) => p >= .9 ? "good" : p >= .7 ? "warn" : "bad";
+function renderKpi(){
+  const N = state.kDays, from = addDays(state.today, -(N-1));
+  const rows = state.krows.filter(r => r.data >= from && r.data <= state.today);
+  const days = Array.from({length:N}, (_,i) => addDays(from, i));
+  $("kPeriod").textContent = `${ddmm(from)} a ${ddmm(state.today)}`;
+
+  // adesão hoje (sobre a lista oficial de áreas)
+  const official = AREAS.length ? AREAS : areaRows(rows);
+  const hojeSet = new Set(rows.filter(r => r.data === state.today).map(r => norm(r.area)));
+  const feitas = official.filter(a => hojeSet.has(norm(a)));
+  const pHoje = official.length ? feitas.length / official.length : 0;
+  $("iAdHoje").textContent = official.length ? pct(pHoje) : "—";
+  $("iAdHoje").className = "v " + tone(pHoje);
+  $("iAdHojeH").textContent = `${feitas.length} de ${official.length} áreas`;
+  const falta = official.filter(a => !hojeSet.has(norm(a)));
+  $("iPend").innerHTML = falta.length ? falta.map(a => `<span>${esc(a)}</span>`).join("") : `<span class="ok">Todas as áreas lançaram hoje</span>`;
+
+  // adesão no período por área (conta só a partir do primeiro registro do sistema, para não punir os dias antes do app existir)
+  const first = rows.reduce((m,r) => r.data < m ? r.data : m, state.today);
+  const NA = Math.max(1, days.filter(d => d >= first).length);
+  const diasPorArea = {}; rows.forEach(r => { (diasPorArea[norm(r.area)] ||= new Set()).add(r.data); });
+  const ad = official.map(a => ({ a, n: (diasPorArea[norm(a)]?.size || 0) })).sort((x,y) => y.n - x.n);
+  const media = ad.length ? ad.reduce((s,x) => s + x.n/NA, 0) / ad.length : 0;
+  $("iAdPer").textContent = ad.length ? pct(media) : "—"; $("iAdPer").className = "v " + tone(media);
+  $("iAdPerH").textContent = `média das áreas em ${NA} dia${NA>1?"s":""} de operação`;
+  $("iAreas").innerHTML = ad.length ? ad.map(x => { const p = x.n/NA; return `<div class="hb ${p < .7 ? "low" : p < .9 ? "mid" : ""}"><span class="nm" title="${esc(x.a)}">${esc(x.a)}</span><span class="tr"><i style="width:${Math.max(p*100, x.n ? 2 : 0)}%"></i></span><span class="ct">${x.n}/${NA}</span></div>`; }).join("") : `<div class="kempty">Cadastre as áreas em config.js.</div>`;
+
+  // volume e sem controles
+  $("iTot").textContent = rows.length;
+  $("iMedia").textContent = `média de ${(rows.length/NA).toFixed(1).replace(".",",")} por dia`;
+  const sem = rows.filter(r => !(r.controles||[]).length).length;
+  const pSem = rows.length ? sem/rows.length : 0;
+  $("iSemCtrl").textContent = rows.length ? pct(pSem) : "—";
+  $("iSemCtrl").className = "v " + (pSem <= .1 ? "good" : pSem <= .3 ? "warn" : "bad");
+  $("iSemCtrlH").textContent = rows.length ? `${sem} de ${rows.length} tarefas` : "sem tarefas no período";
+
+  // tópicos
+  const byT = {}; rows.forEach(r => byT[r.topico] = (byT[r.topico]||0) + 1);
+  const tops = Object.entries(byT).sort((a,b) => b[1]-a[1]); const mx = Math.max(1, ...tops.map(t => t[1]));
+  $("iTop").innerHTML = tops.length ? tops.map(([k,n]) => `<div class="hb"><span class="nm">${esc(TMAP[k]?.n || k)}</span><span class="tr"><i style="width:${n/mx*100}%"></i></span><span class="ct">${n}</span></div>`).join("") : `<div class="kempty">Sem tarefas no período.</div>`;
+
+  // tendência diária (colunas)
+  const perDay = days.map(d => rows.filter(r => r.data === d).length);
+  const top = Math.max(4, ...perDay), W = 1000, H = 180, padL = 28, padB = 22, padT = 10;
+  const cw = (W - padL - 6) / N, sy = (v) => H - padB - (v/top)*(H - padB - padT);
+  const ticks = [0, Math.round(top/2), top];
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Tarefas por dia">`;
+  ticks.forEach(t => { svg += `<line x1="${padL}" x2="${W}" y1="${sy(t)}" y2="${sy(t)}" stroke="var(--line)" stroke-width="1"/><text x="${padL-6}" y="${sy(t)+3}" text-anchor="end">${t}</text>`; });
+  const step = N <= 7 ? 1 : N <= 30 ? 5 : 15;
+  perDay.forEach((v,i) => {
+    const x = padL + i*cw + cw*.15, w = cw*.7, isT = days[i] === state.today;
+    if (v) svg += `<rect x="${x.toFixed(1)}" y="${sy(v).toFixed(1)}" width="${w.toFixed(1)}" height="${(H-padB-sy(v)).toFixed(1)}" rx="2" fill="${isT ? "var(--blue-txt)" : "var(--blue)"}"><title>${ddmm(days[i])}: ${v}</title></rect>`;
+    if (i % step === 0 || isT) svg += `<text x="${(x+w/2).toFixed(1)}" y="${H-6}" text-anchor="middle">${ddmm(days[i])}</text>`;
+  });
+  $("iTrend").innerHTML = svg + "</svg>";
+}
+
+/* ---------- QR Code: abre direto a tela de lançar ---------- */
+const LAUNCH_URL = location.origin + location.pathname + "#lancar";
+function qrSvg(text){
+  if (!window.qrcode) return '<div style="color:#000;font-size:11px;display:grid;place-items:center;height:100%;text-align:center">QR indisponível sem internet</div>';
+  const q = qrcode(0, "M"); q.addData(text); q.make();
+  const n = q.getModuleCount(); let p = "";
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) p += `M${c},${r}h1v1h-1z`;
+  return `<svg viewBox="0 0 ${n} ${n}" shape-rendering="crispEdges" role="img" aria-label="QR Code do TMRD"><path d="${p}" fill="#000"/></svg>`;
+}
+$("qrSmall").innerHTML = qrSvg(LAUNCH_URL);
+$("qrBig").innerHTML = qrSvg(LAUNCH_URL);
+$("qrUrl").textContent = LAUNCH_URL;
+$("qrOpen").addEventListener("click", () => { $("qrModal").hidden = false; $("qrClose").focus(); });
+$("qrClose").addEventListener("click", () => { $("qrModal").hidden = true; });
+$("qrModal").addEventListener("click", e => { if (e.target === $("qrModal")) $("qrModal").hidden = true; });
+addEventListener("keydown", e => { if (e.key === "Escape") $("qrModal").hidden = true; });
+$("qrPrint").addEventListener("click", () => window.print());
+$("qrCopy").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText(LAUNCH_URL); toast("Link copiado"); }
+  catch(_) { const r = document.createRange(); r.selectNodeContents($("qrUrl")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Selecione e copie o link", true); }
+});
+
+function setLive(on, txt){ $("live").classList.toggle("on", on); $("liveTxt").textContent = txt; }
+
+/* ---------- dados de exemplo (só no modo demonstração) ---------- */
+function seedDemo(){
+  const t = state.today, iso = new Date().toISOString();
+  const mk = (o) => ({ id: uuid(), criadoEm: iso, topicoOutro:"", local:"", inicio:"", fim:"", turno:"", controles:[], deviceId:"exemplo", responsavel:"Exemplo", ...o });
+  state.demo = [
+    mk({ data:t, topico:"logistica", atividade:"Armazém operando acima de 95% de ocupação", area:"Armazém", turno:"2º" }),
+    mk({ data:t, topico:"quente", atividade:"Solda em suporte da esteira de paletes", area:"Manutenção", local:"Linha 2", inicio:"16:30", fim:"18:00" }),
+    mk({ data:t, topico:"energias", atividade:"Intervenção no painel elétrico do compressor", area:"Utilidades", inicio:"19:00" }),
+    mk({ data:addDays(t,1), topico:"altura", atividade:"Troca de luminária no mezanino", area:"Facilities", local:"Mezanino doca 4" }),
+    mk({ data:addDays(t,1), topico:"icamento", atividade:"Içamento de bobina com ponte rolante", area:"Recebimento" }),
+    mk({ data:addDays(t,2), topico:"confinado", atividade:"Limpeza interna do tanque de lavagem", area:"Produção" }),
+    mk({ data:addDays(t,4), topico:"terceiros", atividade:"Pintura do piso da expedição por empresa contratada", area:"Expedição" }),
+  ];
+}
+
+/* ---------- início ---------- */
+async function boot(){
+  tick(); setInterval(tick, 15000); route(); paintPending();
+  if (DEMO) {
+    $("dbNotice").hidden = false;
+    $("dbNotice").innerHTML = "<strong>Modo demonstração.</strong> As tarefas abaixo são exemplos e nada é gravado. Preencha <code>config.js</code> com a URL e a chave do Supabase para ligar o banco.";
+    seedDemo(); await refresh(); return;
+  }
+  state.sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY, { auth: { persistSession:false } });
+  await refresh();
+  state.sb.channel("tmrd-live")
+    .on("postgres_changes", { event:"*", schema:"public", table:TABLE }, () => refresh())
+    .subscribe(s => { if (s === "SUBSCRIBED") setLive(true, "Ao vivo"); else if (s === "CHANNEL_ERROR" || s === "TIMED_OUT") setLive(false, "Reconectando"); });
+  setInterval(refresh, 60000);          // rede de segurança caso o tempo real caia
+  addEventListener("online", flushOutbox); flushOutbox();
+}
+boot();
+})();

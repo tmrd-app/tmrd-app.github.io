@@ -1,0 +1,22 @@
+{
+  "name": "TMRD · Tarefa de Maior Risco do Dia",
+  "short_name": "TMRD",
+  "description": "Registro e painel ao vivo das tarefas de maior risco do dia.",
+  "lang": "pt-BR",
+  "start_url": "./#lancar",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Lançar atividade", "url": "./#lancar" },
+    { "name": "Painel", "url": "./#painel" },
+    { "name": "Modo TV", "url": "./#tv" }
+  ]
+}
