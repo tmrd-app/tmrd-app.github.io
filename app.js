@@ -213,7 +213,8 @@ function renderBoard(){
   $("kAll").textContent = today.length;
   const byTopic = {}; today.forEach(r => byTopic[r.topico] = (byTopic[r.topico]||0)+1);
   $("kArea").textContent = Object.keys(byTopic).length;
-  $("heat").innerHTML = TOPICS.map(t => `<span class="ht ${byTopic[t.k] ? "on" : ""}">${t.i}${t.n}${byTopic[t.k] ? ` <b>${byTopic[t.k]}</b>` : ""}</span>`).join("");
+  const present = TOPICS.filter(t => byTopic[t.k]);   // só os riscos lançados hoje: economiza espaço na TV
+  $("heat").innerHTML = present.length ? present.map(t => `<span class="ht on">${t.i}${t.n} <b>${byTopic[t.k]}</b></span>`).join("") : `<span class="none">Nenhum risco lançado para hoje.</span>`;
 
   const grid = {}; rows.forEach(r => { const k = (TMAP[r.topico] ? r.topico : "outros") + "|" + r.data; (grid[k] ||= []).push(r); });
   const head = `<colgroup><col class="c-area">${days.map(() => "<col>").join("")}</colgroup>
