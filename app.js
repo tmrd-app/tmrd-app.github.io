@@ -69,6 +69,25 @@ const api = {
     const { error } = await state.sb.from(TABLE).upsert(toDb(row), { onConflict:"id", ignoreDuplicates:true });
     if (error) throw error;
   },
+  async edit(row, pin){
+    if (DEMO) { const r = state.demo.find(x => x.id === row.id); if (r) Object.assign(r, row); return; }
+    const args = { p_id: row.id, p_data: row.data, p_topico: row.topico, p_topico_outro: row.topicoOutro || "", p_atividade: row.atividade };
+    const { error } = pin ? await state.sb.rpc("tmrd_editar", { p_pin: pin, ...args }) : await state.sb.rpc("tmrd_editar_meu", { p_device: DEVICE, ...args });
+    if (error) throw error;
+  },
+  async removeAdmin(id, pin){
+    if (DEMO) { state.demo = state.demo.filter(x => x.id !== id); return; }
+    const { error } = await state.sb.rpc("tmrd_excluir", { p_pin: pin, p_id: id }); if (error) throw error;
+  },
+  async all(){
+    if (DEMO) return [...state.demo];
+    const out = []; const page = 1000;
+    for (let from = 0; ; from += page) {
+      const { data, error } = await state.sb.from(TABLE).select("*").order("data").order("criado_em").range(from, from + page - 1);
+      if (error) throw error; out.push(...data.map(fromDb)); if (data.length < page) break;
+    }
+    return out;
+  },
   async remove(id){
     if (DEMO) { state.demo = state.demo.filter(x => x.id !== id); return; }
     const { error } = await state.sb.from(TABLE).delete().eq("id", id); if (error) throw error;
@@ -176,7 +195,7 @@ function renderMine(){
     const t = TMAP[r.topico] || TMAP.outros;
     const del = state.confirmDel === r.id
       ? `<span style="display:flex;gap:6px"><button class="mini confirm" data-a="del" data-id="${r.id}">Excluir</button><button class="mini cancel" data-a="nodel">Cancelar</button></span>`
-      : `<button class="mini" data-a="ask" data-id="${r.id}">Excluir</button>`;
+      : `<span style="display:flex;gap:6px"><button class="mini cancel" data-a="edit" data-id="${r.id}">Editar</button><button class="mini" data-a="ask" data-id="${r.id}">Excluir</button></span>`;
     return `<article class="card"><div class="ic">${t.i}</div>
       <div class="body"><div class="tt">${esc(topicLabel(r))}</div><div class="ac">${esc(r.atividade)}</div>
         </div>
@@ -202,7 +221,7 @@ function renderBoard(){
   const body = TOPICS.map(t => `<tr><th class="area" scope="row"><span class="tlab">${t.i}<span>${t.n}</span></span></th>${days.map(d => {
       const items = (grid[t.k+"|"+d] || []).sort(sortRows);
       const cls = `cell${d === state.today ? " today" : ""}${d < state.today ? " past" : ""}`;
-      return `<td class="${cls}">${items.map(r => `<div class="task" title="${esc(r.atividade)}"><span class="x">${esc(r.atividade)}</span>${r.topico === "outros" && r.topicoOutro ? `<span class="m">${esc(r.topicoOutro)}</span>` : ""}</div>`).join("")}</td>`;
+      return `<td class="${cls}">${items.map(r => `<div class="task ed" data-id="${r.id}" title="Toque para editar"><span class="x">${esc(r.atividade)}</span>${r.topico === "outros" && r.topicoOutro ? `<span class="m">${esc(r.topicoOutro)}</span>` : ""}</div>`).join("")}</td>`;
     }).join("")}</tr>`).join("");
   $("mx").innerHTML = head + `<tbody>${body}</tbody>`;
 }
@@ -223,9 +242,65 @@ async function refresh(){
   try { await refreshing; } finally { refreshing = null; }
 }
 
+/* ---------- editar / excluir ---------- */
+const findRow = (id) => [...state.board, ...state.mine, ...state.krows].find(r => r.id === id);
+$("edTopico").innerHTML = TOPICS.map(t => `<option value="${t.k}">${t.n}</option>`).join("");
+$("edTopico").addEventListener("change", () => { $("edOutroBox").hidden = $("edTopico").value !== "outros"; });
+let edRow = null, edMine = false, delArmed = false;
+const PIN_KEY = "tmrd.pin";
+const getPin = () => { try { return sessionStorage.getItem(PIN_KEY) || ""; } catch(_) { return ""; } };
+const setPin = (p) => { try { p ? sessionStorage.setItem(PIN_KEY, p) : sessionStorage.removeItem(PIN_KEY); } catch(_){} };
+function openEdit(id){
+  const r = findRow(id); if (!r) return;
+  edRow = r; delArmed = false;
+  edMine = r.deviceId === DEVICE && r.data >= addDays(state.today, -1);
+  $("edData").value = r.data; $("edTopico").value = TMAP[r.topico] ? r.topico : "outros";
+  $("edOutro").value = r.topicoOutro || ""; $("edOutroBox").hidden = $("edTopico").value !== "outros";
+  $("edAtiv").value = r.atividade; $("edPin").value = getPin(); $("edErr").textContent = "";
+  $("edPinBox").hidden = edMine;
+  $("edDel").textContent = "Excluir"; $("edDel").classList.remove("confirm");
+  $("edModal").hidden = false; $("edAtiv").focus();
+}
+const closeEdit = () => { $("edModal").hidden = true; edRow = null; };
+$("edClose").addEventListener("click", closeEdit);
+$("edModal").addEventListener("click", e => { if (e.target === $("edModal")) closeEdit(); });
+const edError = (x) => { const m = String(x?.message || x || ""); return /PIN/i.test(m) ? "PIN incorreto." : m || "Não foi possível salvar. Tente de novo."; };
+$("edForm").addEventListener("submit", async e => {
+  e.preventDefault(); if (!edRow) return;
+  const atividade = $("edAtiv").value.trim(), topico = $("edTopico").value, pin = edMine ? "" : $("edPin").value.trim();
+  if (!$("edData").value) { $("edErr").textContent = "Informe a data."; return; }
+  if (!atividade) { $("edErr").textContent = "Descreva a atividade."; return; }
+  if (!edMine && !pin) { $("edErr").textContent = "Digite o PIN do administrador."; $("edPin").focus(); return; }
+  $("edSave").disabled = true;
+  try {
+    await api.edit({ ...edRow, data: $("edData").value, topico, topicoOutro: topico === "outros" ? $("edOutro").value.trim() : "", atividade }, pin);
+    if (pin) setPin(pin);
+    closeEdit(); toast("Tarefa atualizada"); refresh();
+  } catch (x) { $("edErr").textContent = edError(x); if (/PIN/i.test(String(x?.message))) setPin(""); }
+  finally { $("edSave").disabled = false; }
+});
+$("edDel").addEventListener("click", async () => {
+  if (!edRow) return;
+  const pin = edMine ? "" : $("edPin").value.trim();
+  if (!edMine && !pin) { $("edErr").textContent = "Digite o PIN do administrador."; $("edPin").focus(); return; }
+  if (!delArmed) { delArmed = true; $("edDel").textContent = "Confirmar exclusão"; $("edDel").classList.add("confirm"); return; }
+  $("edDel").disabled = true;
+  try {
+    edMine ? await api.remove(edRow.id) : await api.removeAdmin(edRow.id, pin);
+    if (pin) setPin(pin);
+    closeEdit(); toast("Tarefa excluída"); refresh();
+  } catch (x) { $("edErr").textContent = edError(x); }
+  finally { $("edDel").disabled = false; }
+});
+document.addEventListener("click", e => {
+  const t = e.target.closest(".task.ed"); if (!t || document.body.classList.contains("tv")) return;
+  openEdit(t.dataset.id);
+});
+
 document.addEventListener("click", async e => {
   const b = e.target.closest(".mini"); if (!b) return;
   const a = b.dataset.a, id = b.dataset.id;
+  if (a === "edit") { openEdit(id); return; }
   if (a === "ask") { state.confirmDel = id; renderMine(); return; }
   if (a === "nodel") { state.confirmDel = null; renderMine(); return; }
   if (a === "del") {
@@ -344,6 +419,33 @@ function renderKpi(){
   $("iTrend").innerHTML = svg + "</svg>";
 }
 
+/* ---------- backup: histórico completo em CSV (abre no Excel) ---------- */
+const BKP_KEY = "tmrd.lastBackup";
+function paintBkp(){
+  let last = null; try { last = localStorage.getItem(BKP_KEY); } catch(_){}
+  const el = $("bkpInfo");
+  if (!last) { el.textContent = "Nenhum download do histórico feito neste aparelho. Recomendado: baixar uma vez por mês."; el.className = "bkpinfo warn"; return; }
+  const dias = Math.floor((Date.now() - new Date(last).getTime()) / 864e5);
+  el.textContent = `Último download do histórico neste aparelho: ${new Date(last).toLocaleDateString("pt-BR")} (${dias === 0 ? "hoje" : dias + " dia(s) atrás"}).`;
+  el.className = "bkpinfo" + (dias > 30 ? " warn" : "");
+}
+$("bkp").addEventListener("click", async () => {
+  const b = $("bkp"); b.disabled = true; const old = b.lastChild.textContent; b.lastChild.textContent = "Preparando…";
+  try {
+    const rows = await api.all();
+    const q = (v) => `"${String(v ?? "").replace(/"/g,'""')}"`;
+    const head = ["Data","Dia da semana","Tópico","Atividade","Registrado em","Origem","ID"];
+    const lines = [head.map(q).join(";"), ...rows.map(r => [fmtDate(r.data), DIAS[dowOf(r.data)], topicLabel(r), r.atividade, r.criadoEm ? new Date(r.criadoEm).toLocaleString("pt-BR") : "", r.deviceId ? "app" : "importação", r.id].map(q).join(";"))];
+    const blob = new Blob(["\ufeff" + lines.join("\r\n")], {type:"text/csv;charset=utf-8"});
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `TMRD_historico_completo_${state.today}.csv`;
+    document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    try { localStorage.setItem(BKP_KEY, new Date().toISOString()); } catch(_){}
+    paintBkp(); toast(`${rows.length} tarefas baixadas`);
+  } catch (x) { toast("Não foi possível baixar: " + (x?.message || "sem conexão"), true); }
+  finally { b.disabled = false; b.lastChild.textContent = old; }
+});
+paintBkp();
+
 /* ---------- QR Code: abre direto a tela de lançar ---------- */
 const LAUNCH_URL = location.origin + location.pathname + "#lancar";
 function qrSvg(text){
@@ -359,7 +461,7 @@ $("qrUrl").textContent = LAUNCH_URL;
 $("qrOpen").addEventListener("click", () => { $("qrModal").hidden = false; $("qrClose").focus(); });
 $("qrClose").addEventListener("click", () => { $("qrModal").hidden = true; });
 $("qrModal").addEventListener("click", e => { if (e.target === $("qrModal")) $("qrModal").hidden = true; });
-addEventListener("keydown", e => { if (e.key === "Escape") $("qrModal").hidden = true; });
+addEventListener("keydown", e => { if (e.key === "Escape") { $("qrModal").hidden = true; closeEdit(); } });
 $("qrPrint").addEventListener("click", () => window.print());
 $("qrCopy").addEventListener("click", async () => {
   try { await navigator.clipboard.writeText(LAUNCH_URL); toast("Link copiado"); }

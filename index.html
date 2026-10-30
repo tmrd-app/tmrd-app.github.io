@@ -209,6 +209,17 @@ table.mx{border-collapse:separate;border-spacing:0;width:100%;min-width:980px;ta
 .qrbox .qr svg,.qr-big svg{display:block;width:100%;height:100%}
 .qrbox b{display:block;font-family:var(--f-display);font-size:20px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;line-height:1.05}
 .qrbox span{font-size:12px;color:var(--muted)}
+.sheet.edsheet{text-align:left;gap:12px;max-width:480px}
+.sheet.edsheet h3{font-size:26px;text-align:center}
+.edf{display:grid;gap:4px}
+.edf select.field{appearance:auto}
+.btn.edsave{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.eddel{color:var(--crit)}
+.btn.eddel.confirm{background:var(--crit);border-color:var(--crit);color:#fff}
+.task.ed{cursor:pointer}.task.ed:hover{outline:1px solid var(--blue-txt)}
+body.tv .task.ed{cursor:default;outline:0}
+.bkpinfo{font-size:13px;color:var(--muted);margin:-6px 0 14px}
+.bkpinfo.warn{color:var(--amber)}
 .modal{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.8);display:grid;place-items:center;padding:20px}
 .sheet{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px;max-width:420px;width:100%;text-align:center;display:grid;gap:14px}
 .sheet h3{margin:0;font-family:var(--f-display);font-size:30px;font-weight:900;letter-spacing:.06em;color:var(--blue-txt)}
@@ -348,8 +359,10 @@ body.tv .qrbox b{font-size:26px}
   <!-- ============ INDICADORES ============ -->
   <section class="view" id="v-indicadores" hidden>
     <div class="bar"><h2>Indicadores <span id="kPeriod"></span></h2>
+      <button class="btn" id="bkp" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 19h16"/></svg>Baixar histórico completo</button>
       <div class="seg kseg" id="kRange"><button type="button" data-r="7">7 dias</button><button type="button" data-r="30" aria-pressed="true">30 dias</button><button type="button" data-r="90">90 dias</button></div>
     </div>
+    <div class="bkpinfo" id="bkpInfo"></div>
     <div class="ktiles">
       <div class="kpi"><div class="l">TMRD hoje</div><div class="v" id="iAdHoje">—</div><div class="h" id="iAdHojeH"></div></div>
       <div class="kpi"><div class="l">Adesão (dias úteis)</div><div class="v" id="iAdPer">—</div><div class="h" id="iAdPerH">dias com registro ÷ dias do período</div></div>
@@ -363,6 +376,22 @@ body.tv .qrbox b{font-size:26px}
     </div>
   </section>
 </main>
+<div class="modal" id="edModal" hidden role="dialog" aria-modal="true" aria-labelledby="edTitle">
+  <form class="sheet edsheet" id="edForm" novalidate>
+    <h3 id="edTitle">Editar tarefa</h3>
+    <div class="edf"><label class="sub" for="edData">Data</label><input class="field" type="date" id="edData"></div>
+    <div class="edf"><label class="sub" for="edTopico">Tópico</label><select class="field" id="edTopico"></select></div>
+    <div class="edf" id="edOutroBox" hidden><label class="sub" for="edOutro">Especifique</label><input class="field" id="edOutro" maxlength="60"></div>
+    <div class="edf"><label class="sub" for="edAtiv">Atividade</label><textarea class="field" id="edAtiv" maxlength="280"></textarea></div>
+    <div class="edf" id="edPinBox"><label class="sub" for="edPin">PIN do administrador</label><input class="field" id="edPin" type="password" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="PIN para editar ou excluir"></div>
+    <div class="err" id="edErr" role="alert"></div>
+    <div class="acts2">
+      <button class="btn edsave" type="submit" id="edSave">Salvar</button>
+      <button class="btn eddel" type="button" id="edDel">Excluir</button>
+      <button class="btn" type="button" id="edClose">Cancelar</button>
+    </div>
+  </form>
+</div>
 <div class="modal" id="qrModal" hidden role="dialog" aria-modal="true" aria-labelledby="qrTitle">
   <div class="sheet">
     <h3 id="qrTitle">TMRD</h3>
