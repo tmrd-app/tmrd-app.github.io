@@ -124,22 +124,15 @@ $("topics").addEventListener("click", e => {
   $("outroTxt").hidden = state.topic !== "outros";
   if (state.topic === "outros") $("outroTxt").focus();
 });
-$("controles").innerHTML = CONTROLES.map(c => `<button type="button" class="chip" aria-pressed="false">${c}</button>`).join("");
-$("controles").addEventListener("click", e => {
-  const b = e.target.closest(".chip"); if (!b) return;
-  const on = b.getAttribute("aria-pressed") !== "true"; b.setAttribute("aria-pressed", on);
-  on ? state.ctrls.add(b.textContent) : state.ctrls.delete(b.textContent);
-});
 $("areasList").innerHTML = AREAS.map(a => `<option value="${esc(a)}">`).join("");
 $("area").value = store.get("tmrd.area") || "";
 
 function toast(msg, bad){ const t = $("toast"); t.textContent = msg; t.classList.toggle("bad", !!bad); t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 2800); }
 
 function resetForm(){
-  $("atividade").value = ""; $("local").value = ""; $("hIni").value = ""; $("hFim").value = ""; $("outroTxt").value = "";
+  $("atividade").value = ""; $("outroTxt").value = "";
   state.topic = null; state.ctrls.clear();
   $("topics").querySelectorAll(".tp").forEach(x => x.setAttribute("aria-checked","false"));
-  $("controles").querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed","false"));
   $("outroTxt").hidden = true;
 }
 
@@ -159,9 +152,9 @@ $("frm").addEventListener("submit", async e => {
   const row = {
     id: uuid(), data: state.dia, criadoEm: new Date().toISOString(),
     topico: state.topic, topicoOutro: state.topic === "outros" ? $("outroTxt").value.trim() : "",
-    atividade, area, local: $("local").value.trim(),
-    turno: "", inicio: $("hIni").value, fim: $("hFim").value,
-    controles: [...state.ctrls], responsavel: "", deviceId: DEVICE,
+    atividade, area, local: "",
+    turno: "", inicio: "", fim: "",
+    controles: [], responsavel: "", deviceId: DEVICE,
   };
   $("area").value = area;
   store.set("tmrd.area", area);
@@ -340,14 +333,9 @@ function renderKpi(){
   $("iAdPerH").textContent = `média das áreas em ${NA} dia${NA>1?"s":""} de operação`;
   $("iAreas").innerHTML = ad.length ? ad.map(x => { const p = x.n/NA; return `<div class="hb ${p < .7 ? "low" : p < .9 ? "mid" : ""}"><span class="nm" title="${esc(x.a)}">${esc(x.a)}</span><span class="tr"><i style="width:${Math.max(p*100, x.n ? 2 : 0)}%"></i></span><span class="ct">${x.n}/${NA}</span></div>`; }).join("") : `<div class="kempty">Cadastre as áreas em config.js.</div>`;
 
-  // volume e sem controles
+  // volume
   $("iTot").textContent = rows.length;
   $("iMedia").textContent = `média de ${(rows.length/NA).toFixed(1).replace(".",",")} por dia`;
-  const sem = rows.filter(r => !(r.controles||[]).length).length;
-  const pSem = rows.length ? sem/rows.length : 0;
-  $("iSemCtrl").textContent = rows.length ? pct(pSem) : "—";
-  $("iSemCtrl").className = "v " + (pSem <= .1 ? "good" : pSem <= .3 ? "warn" : "bad");
-  $("iSemCtrlH").textContent = rows.length ? `${sem} de ${rows.length} tarefas` : "sem tarefas no período";
 
   // tópicos
   const byT = {}; rows.forEach(r => byT[r.topico] = (byT[r.topico]||0) + 1);
