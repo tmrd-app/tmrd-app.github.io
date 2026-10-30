@@ -28,7 +28,7 @@ Instalar o app é opcional: quem preferir tem o atalho na tela inicial (abaixo).
 - **TV:** abrir `.../#tv` no navegador da TV ou do PC ligado nela.
 
 ## Atualizar versão
-Ao subir mudanças, troque `VERSION` em `sw.js` (ex.: `tmrd-v2`) para os celulares baixarem a versão nova.
+Ao subir mudanças, troque `VERSION` em `sw.js` (ex.: `tmrd-v12`) e o `?v=` de `app.js`/`config.js` no `index.html`. TV, notebook e celulares conferem a cada 5 min (e ao voltar para o app) e recarregam sozinhos quando há versão nova.
 
 ## Planilha / Power BI
 A view `tmrd_planilha` já entrega as colunas em português. No Excel/Power BI, conecte via

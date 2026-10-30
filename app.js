@@ -351,7 +351,19 @@ $("installBtn").addEventListener("click", async () => {
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent), standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
 if (isIOS && !standalone && !store.get("tmrd.iosHint")) { $("iosHint").hidden = false; }
 $("iosClose").addEventListener("click", () => { $("iosHint").hidden = true; store.set("tmrd.iosHint","1"); });
-if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(()=>{});
+/* ---------- atualização automática: TV, notebook e celular pegam a versão nova sozinhos ---------- */
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  let ctrl = navigator.serviceWorker.controller, reloaded = false;   // na 1ª instalação não recarrega; nas trocas de versão, sim
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (ctrl && !reloaded) { reloaded = true; location.reload(); }
+    ctrl = navigator.serviceWorker.controller;
+  });
+  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(reg => {
+    const check = () => reg.update().catch(()=>{});
+    setInterval(check, 5*60*1000);   // a TV fica aberta o dia todo: procura versão nova a cada 5 min
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) check(); });
+  }).catch(()=>{});
+}
 
 /* ---------- indicadores ---------- */
 $("kRange").addEventListener("click", e => {
