@@ -447,17 +447,18 @@ $("bkp").addEventListener("click", async () => {
 paintBkp();
 
 /* ---------- QR Code: abre direto a tela de lançar ---------- */
-const LAUNCH_URL = location.origin + location.pathname + "#lancar";
+const LAUNCH_URL = location.pathname === "/" ? location.origin : location.origin + location.pathname;   // curto = QR com quadrados maiores; no celular o app já abre na tela de lançar
 function qrSvg(text){
   if (!window.qrcode) return '<div style="color:#000;font-size:11px;display:grid;place-items:center;height:100%;text-align:center">QR indisponível sem internet</div>';
   const q = qrcode(0, "M"); q.addData(text); q.make();
   const n = q.getModuleCount(); let p = "";
   for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) p += `M${c},${r}h1v1h-1z`;
-  return `<svg viewBox="0 0 ${n} ${n}" shape-rendering="crispEdges" role="img" aria-label="QR Code do TMRD"><path d="${p}" fill="#000"/></svg>`;
+  const z = 4; // margem branca obrigatória para leitura
+  return `<svg viewBox="${-z} ${-z} ${n+2*z} ${n+2*z}" shape-rendering="crispEdges" role="img" aria-label="QR Code do TMRD"><rect x="${-z}" y="${-z}" width="${n+2*z}" height="${n+2*z}" fill="#fff"/><path d="${p}" fill="#000"/></svg>`;
 }
 $("qrSmall").innerHTML = qrSvg(LAUNCH_URL);
 $("qrBig").innerHTML = qrSvg(LAUNCH_URL);
-$("qrUrl").textContent = LAUNCH_URL;
+$("qrUrl").textContent = LAUNCH_URL; $("qrHost").textContent = location.host;
 $("qrOpen").addEventListener("click", () => { $("qrModal").hidden = false; $("qrClose").focus(); });
 $("qrClose").addEventListener("click", () => { $("qrModal").hidden = true; });
 $("qrModal").addEventListener("click", e => { if (e.target === $("qrModal")) $("qrModal").hidden = true; });

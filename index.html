@@ -205,7 +205,8 @@ table.mx{border-collapse:separate;border-spacing:0;width:100%;min-width:980px;ta
 /* ---------- QR Code ---------- */
 .summary{grid-template-columns:200px 200px minmax(0,1fr) auto}
 .qrbox{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;cursor:pointer;text-align:left}
-.qrbox .qr{background:#fff;border-radius:6px;padding:6px;width:104px;height:104px;flex:none}
+.qrbox .qr{background:#fff;border-radius:6px;padding:0;width:140px;height:140px;flex:none}
+.qrbox small{display:block;font-family:var(--f-mono);font-size:12px;color:var(--fg);margin-top:6px}
 .qrbox .qr svg,.qr-big svg{display:block;width:100%;height:100%}
 .qrbox b{display:block;font-family:var(--f-display);font-size:20px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;line-height:1.05}
 .qrbox span{font-size:12px;color:var(--muted)}
@@ -224,7 +225,7 @@ body.tv .task.ed{cursor:default;outline:0}
 .sheet{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px;max-width:420px;width:100%;text-align:center;display:grid;gap:14px}
 .sheet h3{margin:0;font-family:var(--f-display);font-size:30px;font-weight:900;letter-spacing:.06em;color:var(--blue-txt)}
 .sheet p{margin:0;color:var(--muted);font-size:14px}
-.qr-big{background:#fff;border-radius:10px;padding:14px;width:100%;max-width:300px;aspect-ratio:1;margin:0 auto}
+.qr-big{background:#fff;border-radius:10px;padding:0;width:100%;max-width:300px;aspect-ratio:1;margin:0 auto}
 .url{font-family:var(--f-mono);font-size:12px;word-break:break-all;color:var(--fg);background:var(--panel-2);border-radius:6px;padding:8px}
 .sheet .acts2{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 @media print{
@@ -254,7 +255,8 @@ body.tv .tv-enter{display:none}
 .toast.bad{background:var(--crit);color:#fff}
 
 @media (max-width:900px){.summary{grid-template-columns:1fr 1fr}.heatbox,.qrbox{grid-column:1/-1}}
-body.tv .qrbox .qr{width:150px;height:150px}
+body.tv .qrbox .qr{width:230px;height:230px}
+body.tv .qrbox small{font-size:16px}
 body.tv .qrbox b{font-size:26px}
 @media (max-width:560px){
   .tabs{gap:4px}.tab{flex:1 1 0;max-width:none;min-width:0;padding:10px 2px;font-size:14px;letter-spacing:.02em}.tab svg{display:none}
@@ -351,7 +353,7 @@ body.tv .qrbox b{font-size:26px}
       <div class="kpi"><div class="l">Tarefas hoje</div><div class="v" id="kAll">0</div></div>
       <div class="kpi"><div class="l">Riscos diferentes hoje</div><div class="v" id="kArea">0</div></div>
       <div class="heatbox"><div class="l">Riscos presentes hoje</div><div class="heat" id="heat"></div></div>
-      <button class="qrbox" id="qrOpen" type="button" aria-label="Abrir QR Code para lançar"><div class="qr" id="qrSmall"></div><div><b>Lance sua<br>TMRD aqui</b><span>Aponte a câmera<br>do celular</span></div></button>
+      <button class="qrbox" id="qrOpen" type="button" aria-label="Abrir QR Code para lançar"><div class="qr" id="qrSmall"></div><div><b>Lance sua<br>TMRD aqui</b><span>Aponte a câmera<br>do celular ou acesse</span><small id="qrHost"></small></div></button>
     </div>
     <div class="mx-wrap"><table class="mx" id="mx"></table></div>
   </section>
