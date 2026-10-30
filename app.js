@@ -131,10 +131,7 @@ $("controles").addEventListener("click", e => {
   on ? state.ctrls.add(b.textContent) : state.ctrls.delete(b.textContent);
 });
 $("areasList").innerHTML = AREAS.map(a => `<option value="${esc(a)}">`).join("");
-function paintTurno(){ $("turno").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.dataset.t === state.turno)); }
-$("turno").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; state.turno = state.turno === b.dataset.t ? "" : b.dataset.t; paintTurno(); });
-paintTurno();
-$("area").value = store.get("tmrd.area") || ""; $("resp").value = store.get("tmrd.resp") || "";
+$("area").value = store.get("tmrd.area") || "";
 
 function toast(msg, bad){ const t = $("toast"); t.textContent = msg; t.classList.toggle("bad", !!bad); t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 2800); }
 
@@ -159,16 +156,15 @@ $("frm").addEventListener("submit", async e => {
   if (!state.topic) { err.textContent = "Escolha o tópico da tarefa."; $("topics").scrollIntoView({behavior:"smooth", block:"center"}); return; }
   if (state.topic === "outros" && !$("outroTxt").value.trim()) { err.textContent = "Especifique o tópico em “Outros”."; $("outroTxt").focus(); return; }
   if (!atividade) { err.textContent = "Descreva a atividade."; $("atividade").focus(); return; }
-  if (!$("resp").value.trim()) { err.textContent = "Informe o responsável."; $("resp").focus(); return; }
   const row = {
     id: uuid(), data: state.dia, criadoEm: new Date().toISOString(),
     topico: state.topic, topicoOutro: state.topic === "outros" ? $("outroTxt").value.trim() : "",
     atividade, area, local: $("local").value.trim(),
-    turno: state.turno, inicio: $("hIni").value, fim: $("hFim").value,
-    controles: [...state.ctrls], responsavel: $("resp").value.trim(), deviceId: DEVICE,
+    turno: "", inicio: $("hIni").value, fim: $("hFim").value,
+    controles: [...state.ctrls], responsavel: "", deviceId: DEVICE,
   };
   $("area").value = area;
-  store.set("tmrd.area", area); store.set("tmrd.resp", row.responsavel);
+  store.set("tmrd.area", area);
   $("send").disabled = true;
   try {
     await api.insert(row);
@@ -199,7 +195,7 @@ function renderMine(){
       : `<button class="mini" data-a="ask" data-id="${r.id}">Excluir</button>`;
     return `<article class="card"><div class="ic">${t.i}</div>
       <div class="body"><div class="tt">${esc(topicLabel(r))}</div><div class="ac">${esc(r.atividade)}</div>
-        <div class="meta"><span>Área <b>${esc(r.area)}</b></span>${r.local ? `<span>${esc(r.local)}</span>` : ""}${horario(r) ? `<span class="mono">${esc(horario(r))}</span>` : ""}${r.turno ? `<span>Turno <b>${esc(r.turno)}</b></span>` : ""}</div></div>
+        <div class="meta"><span>Área <b>${esc(r.area)}</b></span>${r.local ? `<span>${esc(r.local)}</span>` : ""}${horario(r) ? `<span class="mono">${esc(horario(r))}</span>` : ""}</div></div>
       <div class="side"><span class="dpill ${r.data === state.today ? "today" : ""}">${esc(dayLabel(r.data))}</span>${del}</div></article>`;
   }).join("") : `<div class="empty">${EMPTY_IC}<b>Nenhuma tarefa lançada por este celular</b>Escolha a data, a área e o tópico, descreva a atividade e toque em Enviar. Ela aparece no painel da TV na hora.</div>`;
 }
@@ -229,7 +225,7 @@ function renderBoard(){
       const cls = `cell${d === state.today ? " today" : ""}${d < state.today ? " past" : ""}`;
       return `<td class="${cls}">${items.length ? items.map(r => {
         const t = TMAP[r.topico] || TMAP.outros;
-        const meta = [r.local, horario(r), r.turno && `T${r.turno}`, r.responsavel].filter(Boolean).map(esc).join(" · ");
+        const meta = [r.local, horario(r)].filter(Boolean).map(esc).join(" · ");
         return `<div class="task" title="${esc(r.atividade)}">${t.i}<span class="t">${esc(topicLabel(r))}</span><span class="x">${esc(r.atividade)}</span>${meta ? `<span class="m">${meta}</span>` : ""}</div>`;
       }).join("") : `<div class="none">—</div>`}</td>`;
     }).join("")}</tr>`).join("")
@@ -300,7 +296,7 @@ $("csv").addEventListener("click", () => {
 /* ---------- instalar como app ---------- */
 let deferredPrompt = null;
 addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferredPrompt = e; $("install").hidden = false; });
-$("install").addEventListener("click", async () => {
+$("installBtn").addEventListener("click", async () => {
   if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; $("install").hidden = true; }
 });
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent), standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
@@ -401,7 +397,7 @@ function setLive(on, txt){ $("live").classList.toggle("on", on); $("liveTxt").te
 /* ---------- dados de exemplo (só no modo demonstração) ---------- */
 function seedDemo(){
   const t = state.today, iso = new Date().toISOString();
-  const mk = (o) => ({ id: uuid(), criadoEm: iso, topicoOutro:"", local:"", inicio:"", fim:"", turno:"", controles:[], deviceId:"exemplo", responsavel:"Exemplo", ...o });
+  const mk = (o) => ({ id: uuid(), criadoEm: iso, topicoOutro:"", local:"", inicio:"", fim:"", turno:"", controles:[], deviceId:"exemplo", responsavel:"", ...o });
   state.demo = [
     mk({ data:t, topico:"logistica", atividade:"Armazém operando acima de 95% de ocupação", area:"Armazém", turno:"2º" }),
     mk({ data:t, topico:"quente", atividade:"Solda em suporte da esteira de paletes", area:"Manutenção", local:"Linha 2", inicio:"16:30", fim:"18:00" }),
@@ -412,6 +408,11 @@ function seedDemo(){
     mk({ data:addDays(t,4), topico:"terceiros", atividade:"Pintura do piso da expedição por empresa contratada", area:"Expedição" }),
   ];
 }
+
+/* ---------- banner fixo: reserva a altura certa abaixo dele ---------- */
+const topEl = document.querySelector(".top");
+const fitTop = () => document.documentElement.style.setProperty("--hh", topEl.offsetHeight + "px");
+fitTop(); addEventListener("resize", fitTop); new ResizeObserver(fitTop).observe(topEl);
 
 /* ---------- início ---------- */
 async function boot(){
