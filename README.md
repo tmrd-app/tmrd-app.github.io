@@ -5,7 +5,7 @@ Os lançamentos aparecem na hora no painel da TV, da sala de operações e da ge
 
 ## Telas
 - `#lancar` – formulário do celular (abre por padrão no celular)
-- `#painel` – grade Área × Dias (igual à planilha: área na coluna A, hoje, amanhã e os próximos dias nas colunas), navegação por semana e exportação no mesmo formato (abre por padrão no computador)
+- `#painel` – grade Tópico × Dias (tópico na coluna A; hoje e os próximos 2 dias nas colunas), setas para ver outros dias e exportação no mesmo formato (abre por padrão no computador)
 - `#indicadores` – adesão das áreas, tarefas por dia, tópicos mais frequentes e % sem controle
 - `#tv` – painel em tela cheia para a televisão, sem botões de edição, tela não apaga
 

@@ -43,7 +43,7 @@ const addDays = (s, n) => { const [y,m,d] = s.split("-").map(Number); return ymd
 const dowOf = (s) => { const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d).getDay(); };
 const ddmm = (s) => { const [,m,d] = s.split("-"); return `${d}/${m}`; };
 const state = { today: ymd(), topic:null, turno:guessTurno(), ctrls:new Set(), sb:null, dia:ymd(),
-  mine:[], board:[], krows:[], kDays:30, weekOffset:0, confirmDel:null, demo:[] };
+  mine:[], board:[], krows:[], kDays:30, dayOffset:0, confirmDel:null, demo:[] };
 
 /* ---------- camada de dados (Supabase ou demonstração) ---------- */
 const fromDb = (r) => ({ id:r.id, data:r.data, criadoEm:r.criado_em, topico:r.topico, topicoOutro:r.topico_outro||"", atividade:r.atividade,
@@ -203,12 +203,12 @@ function renderMine(){
   }).join("") : `<div class="empty">${EMPTY_IC}<b>Nenhuma tarefa lançada por este celular</b>Escolha a data e o tópico, descreva a atividade e toque em Enviar. Ela aparece no painel da TV na hora.</div>`;
 }
 
-/* ---------- painel: grade Tópico × Dias da semana (igual à planilha da TV) ---------- */
-function weekStart(){ const dow = dowOf(state.today); return addDays(state.today, -((dow + 6) % 7) + state.weekOffset*7); } // segunda-feira
-function weekDays(){ const s = weekStart(); return Array.from({length:7}, (_,i) => addDays(s,i)); }
+/* ---------- painel: grade Tópico × Dias (hoje e os próximos 2 dias) ---------- */
+const BOARD_DAYS = 3;
+function boardDays(){ const s = addDays(state.today, state.dayOffset*BOARD_DAYS); return Array.from({length:BOARD_DAYS}, (_,i) => addDays(s,i)); }
 function renderBoard(){
-  const days = weekDays(), rows = state.board;
-  $("pTitle").innerHTML = `${state.weekOffset === 0 ? "Esta semana" : "Semana"} <span>${ddmm(days[0])} a ${ddmm(days[6])}</span>`;
+  const days = boardDays(), rows = state.board, last = days[days.length-1];
+  $("pTitle").innerHTML = `${state.dayOffset === 0 ? "Hoje e próximos 2 dias" : "Dias"} <span>${ddmm(days[0])} a ${ddmm(last)}</span>`;
   const today = rows.filter(r => r.data === state.today);
   $("kAll").textContent = today.length;
   const byTopic = {}; today.forEach(r => byTopic[r.topico] = (byTopic[r.topico]||0)+1);
@@ -231,9 +231,9 @@ async function refresh(){
   if (refreshing) return refreshing;
   refreshing = (async () => {
     try {
-      const days = weekDays();
+      const days = boardDays();
       const kFrom = addDays(state.today, -(state.kDays-1));
-      const [board, mine, krows] = await Promise.all([api.range(days[0], days[6]), api.mine(state.today), api.range(kFrom, state.today)]);
+      const [board, mine, krows] = await Promise.all([api.range(days[0], days[days.length-1]), api.mine(state.today), api.range(kFrom, state.today)]);
       state.board = board; state.mine = mine; state.krows = krows;
       setLive(true, DEMO ? "Demonstração" : "Ao vivo");
     } catch(_) { setLive(false, "Sem conexão"); }
@@ -314,7 +314,7 @@ document.addEventListener("click", async e => {
 function show(v){
   const tv = v === "tv"; const view = tv ? "painel" : v;
   document.body.classList.toggle("tv", tv);
-  if (tv && state.weekOffset !== 0) { state.weekOffset = 0; refresh(); }
+  if (tv && state.dayOffset !== 0) { state.dayOffset = 0; refresh(); }
   $("v-lancar").hidden = view !== "lancar"; $("v-painel").hidden = view !== "painel"; $("v-indicadores").hidden = view !== "indicadores";
   document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.v === view));
   if (tv) keepAwake();
@@ -323,9 +323,9 @@ function route(){ const h = location.hash.slice(1); show(["lancar","painel","tv"
 document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => { location.hash = t.dataset.v; }));
 $("tvOn").addEventListener("click", () => { location.hash = "tv"; document.documentElement.requestFullscreen?.().catch(()=>{}); });
 $("tvOff").addEventListener("click", () => { location.hash = "painel"; if (document.fullscreenElement) document.exitFullscreen().catch(()=>{}); });
-$("wPrev").addEventListener("click", () => { state.weekOffset--; refresh(); });
-$("wNext").addEventListener("click", () => { state.weekOffset++; refresh(); });
-$("wToday").addEventListener("click", () => { state.weekOffset = 0; refresh(); });
+$("wPrev").addEventListener("click", () => { state.dayOffset--; refresh(); });
+$("wNext").addEventListener("click", () => { state.dayOffset++; refresh(); });
+$("wToday").addEventListener("click", () => { state.dayOffset = 0; refresh(); });
 addEventListener("hashchange", route);
 let lock = null;
 async function keepAwake(){ try { if (!lock && navigator.wakeLock) { lock = await navigator.wakeLock.request("screen"); lock.addEventListener("release", () => lock = null); } } catch(_){} }
@@ -333,12 +333,12 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) { re
 
 /* ---------- exportar no formato da planilha: Tópicos na coluna A, um dia por coluna ---------- */
 $("csv").addEventListener("click", () => {
-  const days = weekDays(), q = (v) => `"${String(v ?? "").replace(/"/g,'""')}"`;
+  const days = boardDays(), q = (v) => `"${String(v ?? "").replace(/"/g,'""')}"`;
   const grid = {}; state.board.forEach(r => { const k = (TMAP[r.topico] ? r.topico : "outros")+"|"+r.data; (grid[k] ||= []).push(r); });
   const lines = [["Tópicos", ...days.map(d => `${DIAS3[dowOf(d)]} ${fmtDate(d)}`)].map(q).join(";")];
   TOPICS.forEach(t => lines.push([t.n, ...days.map(d => (grid[t.k+"|"+d] || []).sort(sortRows).map(r => r.atividade).join("\n"))].map(q).join(";")));
   const blob = new Blob(["﻿" + lines.join("\r\n")], {type:"text/csv;charset=utf-8"});
-  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `TMRD_${days[0]}_a_${days[6]}.csv`;
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `TMRD_${days[0]}_a_${days[days.length-1]}.csv`;
   document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
 });
 
@@ -452,7 +452,11 @@ function qrSvg(text){
   if (!window.qrcode) return '<div style="color:#000;font-size:11px;display:grid;place-items:center;height:100%;text-align:center">QR indisponível sem internet</div>';
   const q = qrcode(0, "M"); q.addData(text); q.make();
   const n = q.getModuleCount(); let p = "";
-  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) p += `M${c},${r}h1v1h-1z`;
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {   // um retângulo por sequência escura: sem frestas entre os quadrados na TV
+    if (!q.isDark(r, c)) continue;
+    let w = 1; while (c + w < n && q.isDark(r, c + w)) w++;
+    p += `M${c},${r}h${w}v1h-${w}z`; c += w - 1;
+  }
   const z = 4; // margem branca obrigatória para leitura
   return `<svg viewBox="${-z} ${-z} ${n+2*z} ${n+2*z}" shape-rendering="crispEdges" role="img" aria-label="QR Code do TMRD"><rect x="${-z}" y="${-z}" width="${n+2*z}" height="${n+2*z}" fill="#fff"/><path d="${p}" fill="#000"/></svg>`;
 }

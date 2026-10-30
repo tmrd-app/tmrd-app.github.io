@@ -151,7 +151,7 @@ textarea.field{min-height:96px;resize:vertical}
 .ht.on{color:#fff;background:var(--blue);border-color:var(--blue)}
 
 .mx-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--panel)}
-table.mx{border-collapse:separate;border-spacing:0;width:100%;min-width:980px;table-layout:fixed}
+table.mx{border-collapse:separate;border-spacing:0;width:100%;min-width:640px;table-layout:fixed}
 .mx th,.mx td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);vertical-align:top;text-align:left}
 .mx tr:last-child td{border-bottom:0}
 .mx th:last-child,.mx td:last-child{border-right:0}
@@ -168,11 +168,11 @@ table.mx{border-collapse:separate;border-spacing:0;width:100%;min-width:980px;ta
 .mx td.cell.today{background:rgba(17,64,254,.07)}
 .mx td.cell.past{opacity:.75}
 .mx .none{color:var(--dim);font-size:13px;padding:4px}
-.task{display:grid;grid-template-columns:1fr;gap:2px;padding:7px 8px;border-radius:8px;background:var(--panel-2);border-left:3px solid var(--blue);margin-bottom:6px}
+.task{display:grid;grid-template-columns:1fr;gap:4px;padding:9px 11px;border-radius:8px;background:var(--panel-2);border-left:3px solid var(--blue);margin-bottom:6px}
 .task:last-child{margin-bottom:0}
 .task svg{width:18px;height:18px;color:var(--blue-txt);margin-top:1px;grid-row:1 / span 3}
 .task .x{grid-column:1}
-.task .x{font-size:13.5px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.task .x{font-size:16px;font-weight:600;line-height:1.35;overflow-wrap:break-word;hyphens:auto}
 .task .t{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--blue-txt);font-weight:700}
 .task .m{font-size:12px;color:var(--muted)}
 
@@ -243,7 +243,8 @@ body.tv .brand h1{font-size:54px}
 body.tv .brand p{font-size:15px}
 body.tv .clock{font-size:32px}
 body.tv .kpi .v{font-size:60px}
-body.tv .task .x{font-size:16px}
+body.tv .task .x{font-size:22px}
+body.tv .task{padding:10px 12px;margin-bottom:10px}
 body.tv .mx thead th .d{font-size:24px}
 body.tv .mx .area{font-size:16px}
 .tv-exit{display:none}
@@ -272,7 +273,8 @@ body.tv .qrbox b{font-size:26px}
   .live{display:none}
   .mx col.c-area{width:140px}
   .tlab svg{display:none}
-  table.mx{min-width:820px}
+  table.mx{min-width:520px}
+  .task .x{font-size:14px}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -341,10 +343,10 @@ body.tv .qrbox b{font-size:26px}
   <!-- ============ PAINEL ============ -->
   <section class="view" id="v-painel" hidden>
     <div class="bar">
-      <h2 id="pTitle">Semana</h2>
-      <button class="btn ic-only nav" id="wPrev" aria-label="Semana anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m15 6-6 6 6 6"/></svg></button>
+      <h2 id="pTitle">Hoje e próximos 2 dias</h2>
+      <button class="btn ic-only nav" id="wPrev" aria-label="Dias anteriores"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m15 6-6 6 6 6"/></svg></button>
       <button class="btn nav" id="wToday">Hoje</button>
-      <button class="btn ic-only nav" id="wNext" aria-label="Próxima semana"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg></button>
+      <button class="btn ic-only nav" id="wNext" aria-label="Próximos dias"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg></button>
       <button class="btn nav" id="csv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 19h16"/></svg>Exportar planilha</button>
       <button class="btn tv-enter" id="tvOn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>Modo TV</button>
       <button class="btn tv-exit" id="tvOff">Sair do modo TV</button>
