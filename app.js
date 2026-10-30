@@ -21,7 +21,6 @@ const TOPICS = [
 ];
 const TMAP = Object.fromEntries(TOPICS.map(t => [t.k, t]));
 const CONTROLES = ["PT emitida","APR / ART","Bloqueio LOTO","Isolamento de área","Vigia / observador","EPI específico","DDS realizado"];
-const AREAS = CFG.AREAS || [];
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const store = { get(k){ try { return localStorage.getItem(k); } catch(_) { return null; } }, set(k,v){ try { localStorage.setItem(k,v); } catch(_){} } };
@@ -51,7 +50,7 @@ const fromDb = (r) => ({ id:r.id, data:r.data, criadoEm:r.criado_em, topico:r.to
   area:r.area||"", local:r.local||"", turno:r.turno||"", inicio:(r.inicio||"").slice(0,5), fim:(r.fim||"").slice(0,5),
   controles:r.controles||[], responsavel:r.responsavel||"", deviceId:r.device_id||"" });
 const toDb = (r) => ({ id:r.id, data:r.data, criado_em:r.criadoEm, topico:r.topico, topico_outro:r.topicoOutro||null, atividade:r.atividade,
-  area:r.area, local:r.local||null, turno:r.turno||null, inicio:r.inicio||null, fim:r.fim||null,
+  area:r.area||null, local:r.local||null, turno:r.turno||null, inicio:r.inicio||null, fim:r.fim||null,
   controles:r.controles, responsavel:r.responsavel||null, device_id:r.deviceId });
 
 const api = {
@@ -124,8 +123,6 @@ $("topics").addEventListener("click", e => {
   $("outroTxt").hidden = state.topic !== "outros";
   if (state.topic === "outros") $("outroTxt").focus();
 });
-$("areasList").innerHTML = AREAS.map(a => `<option value="${esc(a)}">`).join("");
-$("area").value = store.get("tmrd.area") || "";
 
 function toast(msg, bad){ const t = $("toast"); t.textContent = msg; t.classList.toggle("bad", !!bad); t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 2800); }
 
@@ -136,28 +133,22 @@ function resetForm(){
   $("outroTxt").hidden = true;
 }
 
-/* área digitada vira a forma oficial da lista, se bater (ex.: "expedicao" → "Expedição") */
-const norm = (s) => String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").trim().toLowerCase();
-function canonArea(a){ const n = norm(a); return AREAS.find(x => norm(x) === n) || a.trim(); }
 
 $("frm").addEventListener("submit", async e => {
   e.preventDefault();
   const err = $("err"); err.textContent = "";
-  const atividade = $("atividade").value.trim(), area = canonArea($("area").value);
+  const atividade = $("atividade").value.trim();
   if (!state.dia || state.dia < state.today) { err.textContent = "Escolha a data da tarefa (hoje ou dias seguintes)."; return; }
-  if (!area) { err.textContent = "Informe a área."; $("area").focus(); return; }
   if (!state.topic) { err.textContent = "Escolha o tópico da tarefa."; $("topics").scrollIntoView({behavior:"smooth", block:"center"}); return; }
   if (state.topic === "outros" && !$("outroTxt").value.trim()) { err.textContent = "Especifique o tópico em “Outros”."; $("outroTxt").focus(); return; }
   if (!atividade) { err.textContent = "Descreva a atividade."; $("atividade").focus(); return; }
   const row = {
     id: uuid(), data: state.dia, criadoEm: new Date().toISOString(),
     topico: state.topic, topicoOutro: state.topic === "outros" ? $("outroTxt").value.trim() : "",
-    atividade, area, local: "",
+    atividade, area: "", local: "",
     turno: "", inicio: "", fim: "",
     controles: [], responsavel: "", deviceId: DEVICE,
   };
-  $("area").value = area;
-  store.set("tmrd.area", area);
   $("send").disabled = true;
   try {
     await api.insert(row);
@@ -188,41 +179,31 @@ function renderMine(){
       : `<button class="mini" data-a="ask" data-id="${r.id}">Excluir</button>`;
     return `<article class="card"><div class="ic">${t.i}</div>
       <div class="body"><div class="tt">${esc(topicLabel(r))}</div><div class="ac">${esc(r.atividade)}</div>
-        <div class="meta"><span>Área <b>${esc(r.area)}</b></span>${r.local ? `<span>${esc(r.local)}</span>` : ""}${horario(r) ? `<span class="mono">${esc(horario(r))}</span>` : ""}</div></div>
+        </div>
       <div class="side"><span class="dpill ${r.data === state.today ? "today" : ""}">${esc(dayLabel(r.data))}</span>${del}</div></article>`;
-  }).join("") : `<div class="empty">${EMPTY_IC}<b>Nenhuma tarefa lançada por este celular</b>Escolha a data, a área e o tópico, descreva a atividade e toque em Enviar. Ela aparece no painel da TV na hora.</div>`;
+  }).join("") : `<div class="empty">${EMPTY_IC}<b>Nenhuma tarefa lançada por este celular</b>Escolha a data e o tópico, descreva a atividade e toque em Enviar. Ela aparece no painel da TV na hora.</div>`;
 }
 
-/* ---------- painel: grade Área × Dias ---------- */
-function weekDays(){ const s = addDays(state.today, state.weekOffset*7); return Array.from({length:7}, (_,i) => addDays(s,i)); }
-function areaRows(rows){
-  const list = [...AREAS]; const seen = new Set(list.map(norm));
-  [...new Set(rows.map(r => r.area).filter(Boolean))].sort((a,b) => a.localeCompare(b,"pt-BR")).forEach(a => { if (!seen.has(norm(a))) { seen.add(norm(a)); list.push(a); } });
-  return list;
-}
+/* ---------- painel: grade Tópico × Dias da semana (igual à planilha da TV) ---------- */
+function weekStart(){ const dow = dowOf(state.today); return addDays(state.today, -((dow + 6) % 7) + state.weekOffset*7); } // segunda-feira
+function weekDays(){ const s = weekStart(); return Array.from({length:7}, (_,i) => addDays(s,i)); }
 function renderBoard(){
   const days = weekDays(), rows = state.board;
-  $("pTitle").innerHTML = state.weekOffset === 0 ? `Próximos 7 dias <span>${ddmm(days[0])} a ${ddmm(days[6])}</span>` : `Semana <span>${ddmm(days[0])} a ${ddmm(days[6])}</span>`;
+  $("pTitle").innerHTML = `${state.weekOffset === 0 ? "Esta semana" : "Semana"} <span>${ddmm(days[0])} a ${ddmm(days[6])}</span>`;
   const today = rows.filter(r => r.data === state.today);
   $("kAll").textContent = today.length;
-  $("kArea").textContent = new Set(today.map(r => norm(r.area))).size;
   const byTopic = {}; today.forEach(r => byTopic[r.topico] = (byTopic[r.topico]||0)+1);
+  $("kArea").textContent = Object.keys(byTopic).length;
   $("heat").innerHTML = TOPICS.map(t => `<span class="ht ${byTopic[t.k] ? "on" : ""}">${t.i}${t.n}${byTopic[t.k] ? ` <b>${byTopic[t.k]}</b>` : ""}</span>`).join("");
 
-  const grid = {}; rows.forEach(r => { const k = norm(r.area) + "|" + r.data; (grid[k] ||= []).push(r); });
-  const areas = areaRows(rows);
+  const grid = {}; rows.forEach(r => { const k = (TMAP[r.topico] ? r.topico : "outros") + "|" + r.data; (grid[k] ||= []).push(r); });
   const head = `<colgroup><col class="c-area">${days.map(() => "<col>").join("")}</colgroup>
-    <thead><tr><th class="area">Área</th>${days.map(d => `<th class="${d === state.today ? "today" : ""}"><span class="d">${d === state.today ? "Hoje" : d === addDays(state.today,1) ? "Amanhã" : DIAS3[dowOf(d)]}</span><span class="s">${ddmm(d)}</span></th>`).join("")}</tr></thead>`;
-  const body = areas.length ? areas.map(a => `<tr><th class="area" scope="row">${esc(a)}</th>${days.map(d => {
-      const items = (grid[norm(a)+"|"+d] || []).sort(sortRows);
+    <thead><tr><th class="area">Tópicos</th>${days.map(d => `<th class="${d === state.today ? "today" : ""}"><span class="d">${d === state.today ? "Hoje" : DIAS3[dowOf(d)]}</span><span class="s">${ddmm(d)}</span></th>`).join("")}</tr></thead>`;
+  const body = TOPICS.map(t => `<tr><th class="area" scope="row"><span class="tlab">${t.i}<span>${t.n}</span></span></th>${days.map(d => {
+      const items = (grid[t.k+"|"+d] || []).sort(sortRows);
       const cls = `cell${d === state.today ? " today" : ""}${d < state.today ? " past" : ""}`;
-      return `<td class="${cls}">${items.length ? items.map(r => {
-        const t = TMAP[r.topico] || TMAP.outros;
-        const meta = [r.local, horario(r)].filter(Boolean).map(esc).join(" · ");
-        return `<div class="task" title="${esc(r.atividade)}">${t.i}<span class="t">${esc(topicLabel(r))}</span><span class="x">${esc(r.atividade)}</span>${meta ? `<span class="m">${meta}</span>` : ""}</div>`;
-      }).join("") : `<div class="none">—</div>`}</td>`;
-    }).join("")}</tr>`).join("")
-    : `<tr><td colspan="8"><div class="empty" style="border:0">${EMPTY_IC}<b>Nenhuma tarefa nesta semana</b>Os lançamentos feitos pelos supervisores no celular aparecem aqui automaticamente, na linha da área e na coluna do dia.</div></td></tr>`;
+      return `<td class="${cls}">${items.map(r => `<div class="task" title="${esc(r.atividade)}"><span class="x">${esc(r.atividade)}</span>${r.topico === "outros" && r.topicoOutro ? `<span class="m">${esc(r.topicoOutro)}</span>` : ""}</div>`).join("")}</td>`;
+    }).join("")}</tr>`).join("");
   $("mx").innerHTML = head + `<tbody>${body}</tbody>`;
 }
 
@@ -275,12 +256,12 @@ let lock = null;
 async function keepAwake(){ try { if (!lock && navigator.wakeLock) { lock = await navigator.wakeLock.request("screen"); lock.addEventListener("release", () => lock = null); } } catch(_){} }
 document.addEventListener("visibilitychange", () => { if (!document.hidden) { refresh(); if (document.body.classList.contains("tv")) keepAwake(); } });
 
-/* ---------- exportar no formato da planilha: Área na coluna A, um dia por coluna ---------- */
+/* ---------- exportar no formato da planilha: Tópicos na coluna A, um dia por coluna ---------- */
 $("csv").addEventListener("click", () => {
   const days = weekDays(), q = (v) => `"${String(v ?? "").replace(/"/g,'""')}"`;
-  const grid = {}; state.board.forEach(r => { const k = norm(r.area)+"|"+r.data; (grid[k] ||= []).push(r); });
-  const lines = [["Área", ...days.map(d => `${DIAS3[dowOf(d)]} ${fmtDate(d)}`)].map(q).join(";")];
-  areaRows(state.board).forEach(a => lines.push([a, ...days.map(d => (grid[norm(a)+"|"+d] || []).sort(sortRows).map(r => `[${topicLabel(r)}] ${r.atividade}`).join("\n"))].map(q).join(";")));
+  const grid = {}; state.board.forEach(r => { const k = (TMAP[r.topico] ? r.topico : "outros")+"|"+r.data; (grid[k] ||= []).push(r); });
+  const lines = [["Tópicos", ...days.map(d => `${DIAS3[dowOf(d)]} ${fmtDate(d)}`)].map(q).join(";")];
+  TOPICS.forEach(t => lines.push([t.n, ...days.map(d => (grid[t.k+"|"+d] || []).sort(sortRows).map(r => r.atividade).join("\n"))].map(q).join(";")));
   const blob = new Blob(["﻿" + lines.join("\r\n")], {type:"text/csv;charset=utf-8"});
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `TMRD_${days[0]}_a_${days[6]}.csv`;
   document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
@@ -311,31 +292,36 @@ function renderKpi(){
   const rows = state.krows.filter(r => r.data >= from && r.data <= state.today);
   const days = Array.from({length:N}, (_,i) => addDays(from, i));
   $("kPeriod").textContent = `${ddmm(from)} a ${ddmm(state.today)}`;
+  const isUtil = (d) => { const w = dowOf(d); return w >= 1 && w <= 5; };
 
-  // adesão hoje (sobre a lista oficial de áreas)
-  const official = AREAS.length ? AREAS : areaRows(rows);
-  const hojeSet = new Set(rows.filter(r => r.data === state.today).map(r => norm(r.area)));
-  const feitas = official.filter(a => hojeSet.has(norm(a)));
-  const pHoje = official.length ? feitas.length / official.length : 0;
-  $("iAdHoje").textContent = official.length ? pct(pHoje) : "—";
-  $("iAdHoje").className = "v " + tone(pHoje);
-  $("iAdHojeH").textContent = `${feitas.length} de ${official.length} áreas`;
-  const falta = official.filter(a => !hojeSet.has(norm(a)));
-  $("iPend").innerHTML = falta.length ? falta.map(a => `<span>${esc(a)}</span>`).join("") : `<span class="ok">Todas as áreas lançaram hoje</span>`;
+  // hoje
+  const hoje = rows.filter(r => r.data === state.today);
+  $("iAdHoje").textContent = hoje.length;
+  $("iAdHoje").className = "v " + (hoje.length ? "good" : "bad");
+  $("iAdHojeH").textContent = hoje.length ? `${new Set(hoje.map(r => r.topico)).size} tópico(s) de risco` : "nenhuma TMRD registrada ainda";
+  $("iPend").innerHTML = hoje.length
+    ? hoje.sort(sortRows).map(r => `<span class="ok">${esc((TMAP[r.topico]?.n || "Outros"))}: ${esc(r.atividade)}</span>`).join("")
+    : `<span>Nenhuma TMRD registrada hoje</span>`;
 
-  // adesão no período por área (conta só a partir do primeiro registro do sistema, para não punir os dias antes do app existir)
+  // dias úteis com registro (adesão), contados a partir do primeiro registro
   const first = rows.reduce((m,r) => r.data < m ? r.data : m, state.today);
-  const NA = Math.max(1, days.filter(d => d >= first).length);
-  const diasPorArea = {}; rows.forEach(r => { (diasPorArea[norm(r.area)] ||= new Set()).add(r.data); });
-  const ad = official.map(a => ({ a, n: (diasPorArea[norm(a)]?.size || 0) })).sort((x,y) => y.n - x.n);
-  const media = ad.length ? ad.reduce((s,x) => s + x.n/NA, 0) / ad.length : 0;
-  $("iAdPer").textContent = ad.length ? pct(media) : "—"; $("iAdPer").className = "v " + tone(media);
-  $("iAdPerH").textContent = `média das áreas em ${NA} dia${NA>1?"s":""} de operação`;
-  $("iAreas").innerHTML = ad.length ? ad.map(x => { const p = x.n/NA; return `<div class="hb ${p < .7 ? "low" : p < .9 ? "mid" : ""}"><span class="nm" title="${esc(x.a)}">${esc(x.a)}</span><span class="tr"><i style="width:${Math.max(p*100, x.n ? 2 : 0)}%"></i></span><span class="ct">${x.n}/${NA}</span></div>`; }).join("") : `<div class="kempty">Cadastre as áreas em config.js.</div>`;
+  const uteis = days.filter(d => d >= first && isUtil(d));
+  const comReg = new Set(rows.map(r => r.data));
+  const feitos = uteis.filter(d => comReg.has(d)).length;
+  const pAd = uteis.length ? feitos/uteis.length : 0;
+  $("iAdPer").textContent = uteis.length ? pct(pAd) : "—"; $("iAdPer").className = "v " + tone(pAd);
+  $("iAdPerH").textContent = `${feitos} de ${uteis.length} dias úteis com TMRD`;
 
   // volume
+  const NA = Math.max(1, days.filter(d => d >= first).length);
   $("iTot").textContent = rows.length;
-  $("iMedia").textContent = `média de ${(rows.length/NA).toFixed(1).replace(".",",")} por dia`;
+  $("iMedia").textContent = `média de ${(rows.length/Math.max(1,uteis.length)).toFixed(1).replace(".",",")} por dia útil`;
+
+  // dias úteis sem registro
+  const sem = uteis.filter(d => !comReg.has(d) && d < state.today).reverse();
+  $("iAreas").innerHTML = sem.length
+    ? `<div class="pend">${sem.slice(0,40).map(d => `<span>${DIAS3[dowOf(d)]} ${ddmm(d)}</span>`).join("")}</div>`
+    : `<div class="pend"><span class="ok">Todos os dias úteis do período tiveram TMRD</span></div>`;
 
   // tópicos
   const byT = {}; rows.forEach(r => byT[r.topico] = (byT[r.topico]||0) + 1);
@@ -387,13 +373,13 @@ function seedDemo(){
   const t = state.today, iso = new Date().toISOString();
   const mk = (o) => ({ id: uuid(), criadoEm: iso, topicoOutro:"", local:"", inicio:"", fim:"", turno:"", controles:[], deviceId:"exemplo", responsavel:"", ...o });
   state.demo = [
-    mk({ data:t, topico:"logistica", atividade:"Armazém operando acima de 95% de ocupação", area:"Armazém", turno:"2º" }),
-    mk({ data:t, topico:"quente", atividade:"Solda em suporte da esteira de paletes", area:"Manutenção", local:"Linha 2", inicio:"16:30", fim:"18:00" }),
-    mk({ data:t, topico:"energias", atividade:"Intervenção no painel elétrico do compressor", area:"Utilidades", inicio:"19:00" }),
-    mk({ data:addDays(t,1), topico:"altura", atividade:"Troca de luminária no mezanino", area:"Facilities", local:"Mezanino doca 4" }),
-    mk({ data:addDays(t,1), topico:"icamento", atividade:"Içamento de bobina com ponte rolante", area:"Recebimento" }),
-    mk({ data:addDays(t,2), topico:"confinado", atividade:"Limpeza interna do tanque de lavagem", area:"Produção" }),
-    mk({ data:addDays(t,4), topico:"terceiros", atividade:"Pintura do piso da expedição por empresa contratada", area:"Expedição" }),
+    mk({ data:t, topico:"logistica", atividade:"Armazém operando acima de 95% de ocupação", turno:"2º" }),
+    mk({ data:t, topico:"quente", atividade:"Solda em suporte da esteira de paletes", local:"Linha 2", inicio:"16:30", fim:"18:00" }),
+    mk({ data:t, topico:"energias", atividade:"Intervenção no painel elétrico do compressor", inicio:"19:00" }),
+    mk({ data:addDays(t,1), topico:"altura", atividade:"Troca de luminária no mezanino", local:"Mezanino doca 4" }),
+    mk({ data:addDays(t,1), topico:"icamento", atividade:"Içamento de bobina com ponte rolante" }),
+    mk({ data:addDays(t,2), topico:"confinado", atividade:"Limpeza interna do tanque de lavagem" }),
+    mk({ data:addDays(t,4), topico:"terceiros", atividade:"Pintura do piso da expedição por empresa contratada" }),
   ];
 }
 
