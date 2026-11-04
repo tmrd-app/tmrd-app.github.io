@@ -1,6 +1,6 @@
 // TMRD service worker — guarda a "casca" do app para abrir rápido e sem sinal.
 // Ao publicar uma versão nova, mude o número abaixo para forçar a atualização nos celulares.
-const VERSION = "tmrd-v14";
+const VERSION = "tmrd-v15";
 const SHELL = ["./", "index.html", "app.js", "config.js", "manifest.webmanifest", "lib/qrcode.js", "lib/supabase.js",
   "icons/icon.svg", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png"];
 

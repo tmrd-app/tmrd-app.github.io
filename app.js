@@ -21,16 +21,16 @@ const TOPICS = [
 ];
 const TMAP = Object.fromEntries(TOPICS.map(t => [t.k, t]));
 /* ---------- responsáveis (gerência e supervisores) — para incluir alguém, acrescente {n: nome, a: área} ---------- */
-const AREAS = ["Gerência","Produção","Backend","Frontend","Processos","Elétrica","Logística","Qualidade","BOE","EHS"];
+const AREAS = ["Gerência","Produção","Back-end","Front-end","Processos","Elétrica","Logística","Qualidade","BOE","EHS"];
 const RESPONSAVEIS = [
   {n:"Juliano De Assis", a:"Gerência"}, {n:"Gustavo Alves", a:"Gerência"}, {n:"Bernardo Castro de Assis Pereira", a:"Gerência"},
   {n:"Claudio Gomes", a:"Logística"}, {n:"Jennefer Da Silva Florentino", a:"Qualidade"},
   {n:"Mario Sergio Pinheiro Silva", a:"BOE"}, {n:"Luana Da Silva Lima", a:"EHS"},
   {n:"Andre Fioqui Moreira", a:"Produção"}, {n:"Damiana Xavier", a:"Produção"}, {n:"Homero Mata da Silva", a:"Elétrica"},
-  {n:"Luana Barbara de Almeida Lima", a:"Produção"}, {n:"Lucas Mateus Da Silva Pinto", a:"Backend"},
+  {n:"Luana Barbara de Almeida Lima", a:"Produção"}, {n:"Lucas Mateus Da Silva Pinto", a:"Back-end"},
   {n:"Raffael Rodrigues Fonseca", a:"Produção"},
   {n:"Rosemar Luis De Paula Sales", a:"Produção"}, {n:"Samuel Henrique Messias Ferreira", a:"Processos"},
-  {n:"Savoy Costa", a:"Frontend"},
+  {n:"Savoy Costa", a:"Front-end"},
 ].sort((x,y) => AREAS.indexOf(x.a) - AREAS.indexOf(y.a) || x.n.localeCompare(y.n, "pt-BR"));
 const RNAMES = RESPONSAVEIS.map(r => r.n);
 const areaOf = (name) => RESPONSAVEIS.find(r => r.n === name)?.a || "Outros";
