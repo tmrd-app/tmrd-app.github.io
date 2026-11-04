@@ -31,3 +31,8 @@ revoke all on function public.tmrd_editar(text, uuid, date, text, text, text, te
 revoke all on function public.tmrd_editar_meu(text, uuid, date, text, text, text, text) from public;
 grant execute on function public.tmrd_editar(text, uuid, date, text, text, text, text) to anon, authenticated, service_role;
 grant execute on function public.tmrd_editar_meu(text, uuid, date, text, text, text, text) to anon, authenticated, service_role;
+
+-- Responsável obrigatório para tarefas novas e editadas. NOT VALID: não cobra das tarefas antigas (sem nome).
+alter table public.tmrd_registros drop constraint if exists tmrd_responsavel_obrigatorio;
+alter table public.tmrd_registros add constraint tmrd_responsavel_obrigatorio
+  check (char_length(trim(coalesce(responsavel, ''))) > 0) not valid;

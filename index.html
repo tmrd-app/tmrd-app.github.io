@@ -206,6 +206,16 @@ select.field{appearance:auto}
 .trend svg{display:block;width:100%;min-width:560px;height:auto}
 .trend text{fill:var(--muted);font-family:var(--f-mono);font-size:10px}
 .kempty{color:var(--dim);font-size:13px}
+.kcard h3.kh{display:flex;align-items:center;gap:6px}.kcard h3.kh .btn{margin-left:auto;text-transform:none;letter-spacing:0}
+.pend span small{color:inherit;opacity:.7;font-weight:500;margin-left:4px}
+.rk-wrap{overflow-x:auto}
+table.rk{width:100%;border-collapse:collapse;font-size:14px;min-width:560px}
+.rk th{text-align:left;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line)}
+.rk td{padding:9px 10px;border-bottom:1px solid var(--line)}
+.rk tr:last-child td{border-bottom:0}
+.rk .num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.rk tr.zero td{color:var(--dim)}
+.rk .sim{color:#3ecf8e;font-weight:600}.rk .nao{color:#ffb1b2}
 @media (max-width:900px){.ktiles{grid-template-columns:1fr}.kgrid{grid-template-columns:1fr}}
 /* ---------- QR Code ---------- */
 /* resumo compacto: os dois números empilhados numa coluna, riscos ao lado, QR à direita */
@@ -399,6 +409,9 @@ body.tv .qrbox b{font-size:26px}
       <div class="kcard kwide"><h3>Tarefas por dia</h3><div class="trend" id="iTrend"></div></div>
       <div class="kcard"><h3>Dias úteis sem TMRD <small>mais recentes primeiro</small></h3><div id="iAreas"></div></div>
       <div class="kcard"><h3>Tópicos mais frequentes</h3><div id="iTop"></div></div>
+      <div class="kcard"><h3>TMRDs por área</h3><div id="iArea"></div></div>
+      <div class="kcard"><h3>Ainda sem TMRD hoje</h3><div id="iFalta"></div></div>
+      <div class="kcard kwide"><h3 class="kh">Por responsável <small>no período</small><button class="btn" id="kRespCsv" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 19h16"/></svg>Exportar</button></h3><div class="rk-wrap" id="iResp"></div></div>
     </div>
   </section>
 </main>

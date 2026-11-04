@@ -20,13 +20,20 @@ const TOPICS = [
   {k:"outros", n:"Outros", i:P('<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>')},
 ];
 const TMAP = Object.fromEntries(TOPICS.map(t => [t.k, t]));
-/* ---------- responsáveis (supervisores e gerentes) — para incluir alguém, acrescente o nome aqui ---------- */
+/* ---------- responsáveis (gerência e supervisores) — para incluir alguém, acrescente {n: nome, a: área} ---------- */
+const AREAS = ["Gerência","Produção","Logística","Qualidade","BOE","EHS"];
 const RESPONSAVEIS = [
-  "Andre Fioqui Moreira", "Bernardo Castro de Assis Pereira", "Claudio Gomes", "Damiana Xavier", "Homero Mata da Silva",
-  "Jennefer Da Silva Florentino", "Juliano De Assis", "Luana Barbara de Almeida Lima", "Luana Da Silva Lima",
-  "Lucas Mateus Da Silva Pinto", "Luiz Gustavo", "Mario Sergio Pinheiro Silva", "Raffael Rodrigues Fonseca",
-  "Rosemar Luis De Paula Sales", "Samuel Henrique Messias Ferreira", "Savoy Costa",
-].sort((a,b) => a.localeCompare(b, "pt-BR"));
+  {n:"Juliano De Assis", a:"Gerência"}, {n:"Bernardo Castro de Assis Pereira", a:"Gerência"},
+  {n:"Claudio Gomes", a:"Logística"}, {n:"Jennefer Da Silva Florentino", a:"Qualidade"},
+  {n:"Mario Sergio Pinheiro Silva", a:"BOE"}, {n:"Luana Da Silva Lima", a:"EHS"},
+  {n:"Andre Fioqui Moreira", a:"Produção"}, {n:"Damiana Xavier", a:"Produção"}, {n:"Homero Mata da Silva", a:"Produção"},
+  {n:"Luana Barbara de Almeida Lima", a:"Produção"}, {n:"Lucas Mateus Da Silva Pinto", a:"Produção"},
+  {n:"Luiz Gustavo", a:"Produção"}, {n:"Raffael Rodrigues Fonseca", a:"Produção"},
+  {n:"Rosemar Luis De Paula Sales", a:"Produção"}, {n:"Samuel Henrique Messias Ferreira", a:"Produção"},
+  {n:"Savoy Costa", a:"Produção"},
+].sort((x,y) => AREAS.indexOf(x.a) - AREAS.indexOf(y.a) || x.n.localeCompare(y.n, "pt-BR"));
+const RNAMES = RESPONSAVEIS.map(r => r.n);
+const areaOf = (name) => RESPONSAVEIS.find(r => r.n === name)?.a || "Outros";
 const OUTRO_RESP = "__outro";
 const USER_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>';
 const CONTROLES = ["PT emitida","APR / ART","Bloqueio LOTO","Isolamento de área","Vigia / observador","EPI específico","DDS realizado"];
@@ -156,9 +163,12 @@ function toast(msg, bad){ const t = $("toast"); t.textContent = msg; t.classList
 
 /* responsável: select com a lista + "Outro" para digitar; o celular lembra o último nome usado */
 const RESP_KEY = "tmrd.responsavel";
-function fillResp(sel){ sel.innerHTML = `<option value="">Selecione seu nome</option>${RESPONSAVEIS.map(n => `<option>${esc(n)}</option>`).join("")}<option value="${OUTRO_RESP}">Outro (digitar nome)</option>`; }
+function fillResp(sel){
+  const groups = AREAS.map(a => `<optgroup label="${a}">${RESPONSAVEIS.filter(r => r.a === a).map(r => `<option>${esc(r.n)}</option>`).join("")}</optgroup>`).join("");
+  sel.innerHTML = `<option value="">Selecione seu nome</option>${groups}<optgroup label="Não está na lista"><option value="${OUTRO_RESP}">Outro (digitar nome)</option></optgroup>`;
+}
 function setResp(sel, box, inp, name){
-  const inList = RESPONSAVEIS.includes(name);
+  const inList = RNAMES.includes(name);
   sel.value = !name ? "" : inList ? name : OUTRO_RESP;
   inp.value = name && !inList ? name : ""; box.hidden = sel.value !== OUTRO_RESP;
 }
@@ -457,7 +467,47 @@ function renderKpi(){
     if (i % step === 0 || isT) svg += `<text x="${(x+w/2).toFixed(1)}" y="${H-6}" text-anchor="middle">${ddmm(days[i])}</text>`;
   });
   $("iTrend").innerHTML = svg + "</svg>";
+
+  renderResp(rows);
 }
+
+/* ---------- KPI por responsável e por área ---------- */
+function respStats(rows){
+  const m = new Map(RESPONSAVEIS.map(r => [r.n, { n:r.n, a:r.a, total:0, dias:new Set(), ultimo:"", hoje:false }]));
+  let semNome = 0;
+  rows.forEach(r => {
+    const n = (r.responsavel || "").trim(); if (!n) { semNome++; return; }
+    if (!m.has(n)) m.set(n, { n, a:"Outros", total:0, dias:new Set(), ultimo:"", hoje:false });
+    const s = m.get(n); s.total++; s.dias.add(r.data); if (r.data > s.ultimo) s.ultimo = r.data; if (r.data === state.today) s.hoje = true;
+  });
+  const ord = [...AREAS, "Outros"];
+  const list = [...m.values()].sort((x,y) => ord.indexOf(x.a) - ord.indexOf(y.a) || y.total - x.total || x.n.localeCompare(y.n, "pt-BR"));
+  return { list, semNome };
+}
+function renderResp(rows){
+  const { list, semNome } = respStats(rows);
+  // por área
+  const byA = {}; list.forEach(s => byA[s.a] = (byA[s.a]||0) + s.total);
+  const areas = [...AREAS, "Outros"].filter(a => a in byA), mx = Math.max(1, ...areas.map(a => byA[a]));
+  $("iArea").innerHTML = areas.map(a => `<div class="hb"><span class="nm">${a}</span><span class="tr"><i style="width:${byA[a]/mx*100}%"></i></span><span class="ct">${byA[a]}</span></div>`).join("");
+  // quem ainda não lançou hoje (só quem está na lista)
+  const falta = list.filter(s => s.a !== "Outros" && !s.hoje);
+  $("iFalta").innerHTML = `<div class="pend">${falta.length ? falta.map(s => `<span>${esc(s.n)} <small>${s.a}</small></span>`).join("") : `<span class="ok">Todos já lançaram a TMRD de hoje</span>`}</div>`;
+  // tabela
+  $("iResp").innerHTML = `<table class="rk"><thead><tr><th>Responsável</th><th>Área</th><th class="num">TMRDs</th><th class="num">Dias com lançamento</th><th>Último</th><th>Hoje</th></tr></thead><tbody>${
+    list.map(s => `<tr class="${s.total ? "" : "zero"}"><td>${esc(s.n)}</td><td>${s.a}</td><td class="num">${s.total}</td><td class="num">${s.dias.size}</td><td>${s.ultimo ? ddmm(s.ultimo) : "—"}</td><td>${s.hoje ? '<span class="sim">✓ lançou</span>' : '<span class="nao">pendente</span>'}</td></tr>`).join("")
+  }</tbody></table>${semNome ? `<p class="kempty">${semNome} tarefa(s) do período sem responsável (lançadas antes do campo existir).</p>` : ""}`;
+}
+$("kRespCsv").addEventListener("click", () => {
+  const N = state.kDays, from = addDays(state.today, -(N-1));
+  const { list } = respStats(state.krows.filter(r => r.data >= from && r.data <= state.today));
+  const q = (v) => `"${String(v ?? "").replace(/"/g,'""')}"`;
+  const lines = [["Responsável","Área","TMRDs","Dias com lançamento","Último lançamento","Lançou hoje"].map(q).join(";"),
+    ...list.map(s => [s.n, s.a, s.total, s.dias.size, s.ultimo ? fmtDate(s.ultimo) : "", s.hoje ? "Sim" : "Não"].map(q).join(";"))];
+  const blob = new Blob(["\ufeff" + lines.join("\r\n")], {type:"text/csv;charset=utf-8"});
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `TMRD_por_responsavel_${from}_a_${state.today}.csv`;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+});
 
 /* ---------- backup: histórico completo em CSV (abre no Excel) ---------- */
 const BKP_KEY = "tmrd.lastBackup";
