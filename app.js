@@ -23,7 +23,7 @@ const TMAP = Object.fromEntries(TOPICS.map(t => [t.k, t]));
 /* ---------- responsáveis (gerência e supervisores) — para incluir alguém, acrescente {n: nome, a: área} ---------- */
 const AREAS = ["Gerência","Produção","Logística","Qualidade","BOE","EHS"];
 const RESPONSAVEIS = [
-  {n:"Juliano De Assis", a:"Gerência"}, {n:"Bernardo Castro de Assis Pereira", a:"Gerência"},
+  {n:"Juliano De Assis", a:"Gerência"}, {n:"Gustavo Alves", a:"Gerência"}, {n:"Bernardo Castro de Assis Pereira", a:"Gerência"},
   {n:"Claudio Gomes", a:"Logística"}, {n:"Jennefer Da Silva Florentino", a:"Qualidade"},
   {n:"Mario Sergio Pinheiro Silva", a:"BOE"}, {n:"Luana Da Silva Lima", a:"EHS"},
   {n:"Andre Fioqui Moreira", a:"Produção"}, {n:"Damiana Xavier", a:"Produção"}, {n:"Homero Mata da Silva", a:"Produção"},
@@ -88,7 +88,9 @@ const api = {
   async edit(row, pin){
     if (DEMO) { const r = state.demo.find(x => x.id === row.id); if (r) Object.assign(r, row); return; }
     const args = { p_id: row.id, p_data: row.data, p_topico: row.topico, p_topico_outro: row.topicoOutro || "", p_atividade: row.atividade, p_responsavel: row.responsavel || "" };
-    const { error } = pin ? await state.sb.rpc("tmrd_editar", { p_pin: pin, ...args }) : await state.sb.rpc("tmrd_editar_meu", { p_device: DEVICE, ...args });
+    const call = (a) => pin ? state.sb.rpc("tmrd_editar", { p_pin: pin, ...a }) : state.sb.rpc("tmrd_editar_meu", { p_device: DEVICE, ...a });
+    let { error } = await call(args);
+    if (error && error.code === "PGRST202") { const { p_responsavel, ...old } = args; ({ error } = await call(old)); }   // banco ainda sem p_responsavel
     if (error) throw error;
   },
   async removeAdmin(id, pin){
