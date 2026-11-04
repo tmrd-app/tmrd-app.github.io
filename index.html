@@ -180,6 +180,21 @@ table.mx{border-collapse:separate;border-spacing:0;width:100%;min-width:640px;ta
 .task .who svg{grid-row:auto;margin-top:0}
 select.field{appearance:auto}
 .hint{font-size:12px;color:var(--dim)}
+/* seletor de responsável (lista própria: letra menor que o seletor do celular, um nome por linha, com busca) */
+.pick{display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;cursor:pointer;font-size:15px}
+.pick .ph{color:var(--dim)}.pick small{color:var(--muted);font-size:12px;margin-left:6px}
+.pick::after{content:"";width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg) translateY(-3px);flex:none}
+#respModal{z-index:95}
+.sheet.rsheet{max-width:440px;text-align:left;gap:10px;max-height:85vh;display:flex;flex-direction:column;padding:16px}
+.rhead{display:flex;align-items:center;justify-content:space-between}
+.sheet.rsheet h3{font-size:22px}
+.rlist{overflow-y:auto;min-height:0;margin:0 -4px}
+.rg{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--blue-txt);font-weight:700;padding:12px 8px 4px}
+.ri{display:block;width:100%;background:none;border:0;border-bottom:1px solid var(--line);padding:10px 8px;font-size:15px;line-height:1.3;text-align:left;cursor:pointer;color:var(--fg)}
+.ri:hover{background:var(--panel-2)}
+.ri[aria-selected="true"]{color:var(--blue-txt);font-weight:700}
+.rlist .none{color:var(--dim);font-size:13px;padding:12px 8px}
+@media (max-width:560px){#respModal{place-items:end center;padding:0}.sheet.rsheet{max-width:none;border-radius:14px 14px 0 0;max-height:80vh}}
 
 /* ---------- indicadores ---------- */
 .kseg{margin-left:auto}
@@ -339,7 +354,7 @@ body.tv .qrbox b{font-size:26px}
     <form class="form" id="frm" novalidate>
       <div class="q">
         <div class="q-h"><span class="n">01</span><label for="resp">Responsável</label><em>*</em></div>
-        <select class="field" id="resp" aria-describedby="respHint"></select>
+        <select class="field" id="resp" hidden></select>
         <div class="edf" id="respOutroBox" hidden><input class="field" id="respOutro" maxlength="50" placeholder="Nome e sobrenome" autocomplete="name"></div>
         <span class="hint" id="respHint">Este celular lembra o seu nome nos próximos lançamentos.</span>
       </div>
@@ -422,7 +437,7 @@ body.tv .qrbox b{font-size:26px}
     <div class="edf"><label class="sub" for="edTopico">Tópico</label><select class="field" id="edTopico"></select></div>
     <div class="edf" id="edOutroBox" hidden><label class="sub" for="edOutro">Especifique</label><input class="field" id="edOutro" maxlength="60"></div>
     <div class="edf"><label class="sub" for="edAtiv">Atividade</label><textarea class="field" id="edAtiv" maxlength="280"></textarea></div>
-    <div class="edf"><label class="sub" for="edResp">Responsável</label><select class="field" id="edResp"></select></div>
+    <div class="edf"><span class="sub">Responsável</span><select class="field" id="edResp" hidden></select></div>
     <div class="edf" id="edRespOutroBox" hidden><input class="field" id="edRespOutro" maxlength="50" placeholder="Nome e sobrenome"></div>
     <div class="edf" id="edPinBox"><label class="sub" for="edPin">PIN do administrador</label><input class="field" id="edPin" type="password" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="PIN para editar ou excluir"></div>
     <div class="err" id="edErr" role="alert"></div>
@@ -432,6 +447,13 @@ body.tv .qrbox b{font-size:26px}
       <button class="btn" type="button" id="edClose">Cancelar</button>
     </div>
   </form>
+</div>
+<div class="modal" id="respModal" hidden role="dialog" aria-modal="true" aria-labelledby="respTitle">
+  <div class="sheet rsheet">
+    <div class="rhead"><h3 id="respTitle">Responsável</h3><button class="btn" type="button" id="respClose">Fechar</button></div>
+    <input class="field" id="respFind" type="search" placeholder="Buscar nome" autocomplete="off" aria-label="Buscar nome">
+    <div class="rlist" id="respList" role="listbox" aria-labelledby="respTitle"></div>
+  </div>
 </div>
 <div class="modal" id="qrModal" hidden role="dialog" aria-modal="true" aria-labelledby="qrTitle">
   <div class="sheet">
@@ -448,9 +470,9 @@ body.tv .qrbox b{font-size:26px}
 </div>
 <div class="toast" id="toast" role="status"></div>
 
-<script src="config.js?v=16"></script>
+<script src="config.js?v=17"></script>
 <script src="lib/qrcode.js"></script>
 <script src="lib/supabase.js"></script>
-<script src="app.js?v=16"></script>
+<script src="app.js?v=17"></script>
 </body>
 </html>

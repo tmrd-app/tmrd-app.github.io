@@ -171,9 +171,36 @@ function setResp(sel, box, inp, name){
   const inList = RNAMES.includes(name);
   sel.value = !name ? "" : inList ? name : OUTRO_RESP;
   inp.value = name && !inList ? name : ""; box.hidden = sel.value !== OUTRO_RESP;
+  syncPick(sel);
 }
+/* botão que abre a lista própria; o <select> escondido continua guardando o valor */
+function syncPick(sel){
+  const b = sel._pick; if (!b) return; const v = sel.value;
+  b.innerHTML = !v ? `<span class="ph">Selecione seu nome</span>` : v === OUTRO_RESP ? `<span>Outro (digitar nome)</span>` : `<span>${esc(v)}<small>${areaOf(v)}</small></span>`;
+}
+function attachPick(sel){
+  const b = document.createElement("button"); b.type = "button"; b.className = "field pick"; b.setAttribute("aria-haspopup", "listbox");
+  sel.after(b); sel._pick = b; b.addEventListener("click", () => openPick(sel)); syncPick(sel);
+}
+let pickSel = null;
+function paintPick(){
+  const q = $("respFind").value.trim().toLowerCase(), cur = pickSel.value;
+  const item = (v, label) => `<button type="button" class="ri" role="option" data-v="${esc(v)}" aria-selected="${v === cur}">${esc(label)}</button>`;
+  const html = AREAS.map(a => { const it = RESPONSAVEIS.filter(r => r.a === a && r.n.toLowerCase().includes(q));
+    return it.length ? `<div class="rg">${a}</div>${it.map(r => item(r.n, r.n)).join("")}` : ""; }).join("");
+  $("respList").innerHTML = (html || `<div class="none">Nenhum nome encontrado.</div>`) + `<div class="rg">Não está na lista</div>${item(OUTRO_RESP, "Outro (digitar nome)")}`;
+}
+function openPick(sel){ pickSel = sel; $("respFind").value = ""; paintPick(); $("respModal").hidden = false; $("respList").querySelector('[aria-selected="true"]')?.scrollIntoView({block:"center"}); }
+const closePick = () => { $("respModal").hidden = true; pickSel?._pick.focus(); pickSel = null; };
+$("respFind").addEventListener("input", paintPick);
+$("respClose").addEventListener("click", closePick);
+$("respModal").addEventListener("click", e => {
+  if (e.target === $("respModal")) return closePick();
+  const o = e.target.closest(".ri"); if (!o || !pickSel) return;
+  const sel = pickSel; sel.value = o.dataset.v; syncPick(sel); closePick(); sel.dispatchEvent(new Event("change"));
+});
 const readResp = (sel, inp) => sel.value === OUTRO_RESP ? inp.value.trim().replace(/\s+/g, " ") : sel.value;
-fillResp($("resp")); fillResp($("edResp"));
+fillResp($("resp")); fillResp($("edResp")); attachPick($("resp")); attachPick($("edResp"));
 setResp($("resp"), $("respOutroBox"), $("respOutro"), store.get(RESP_KEY) || "");
 $("resp").addEventListener("change", () => { $("respOutroBox").hidden = $("resp").value !== OUTRO_RESP; if (!$("respOutroBox").hidden) $("respOutro").focus(); });
 $("edResp").addEventListener("change", () => { $("edRespOutroBox").hidden = $("edResp").value !== OUTRO_RESP; });
@@ -194,7 +221,7 @@ $("frm").addEventListener("submit", async e => {
   if (state.topic === "outros" && !$("outroTxt").value.trim()) { err.textContent = "Especifique o tópico em “Outros”."; $("outroTxt").focus(); return; }
   if (!atividade) { err.textContent = "Descreva a atividade."; $("atividade").focus(); return; }
   const responsavel = readResp($("resp"), $("respOutro"));
-  if (!responsavel) { err.textContent = "Informe o responsável pela tarefa."; ($("resp").value === OUTRO_RESP ? $("respOutro") : $("resp")).focus(); return; }
+  if (!responsavel) { err.textContent = "Informe o responsável pela tarefa."; ($("resp").value === OUTRO_RESP ? $("respOutro") : $("resp")._pick).focus(); return; }
   store.set(RESP_KEY, responsavel);
   const row = {
     id: uuid(), data: state.dia, criadoEm: new Date().toISOString(),
@@ -556,7 +583,7 @@ $("qrUrl").textContent = LAUNCH_URL; $("qrHost").textContent = location.host;
 $("qrOpen").addEventListener("click", () => { $("qrModal").hidden = false; $("qrClose").focus(); });
 $("qrClose").addEventListener("click", () => { $("qrModal").hidden = true; });
 $("qrModal").addEventListener("click", e => { if (e.target === $("qrModal")) $("qrModal").hidden = true; });
-addEventListener("keydown", e => { if (e.key === "Escape") { $("qrModal").hidden = true; closeEdit(); } });
+addEventListener("keydown", e => { if (e.key === "Escape") { if (!$("respModal").hidden) return closePick(); $("qrModal").hidden = true; closeEdit(); } });
 $("qrPrint").addEventListener("click", () => window.print());
 $("qrCopy").addEventListener("click", async () => {
   try { await navigator.clipboard.writeText(LAUNCH_URL); toast("Link copiado"); }
