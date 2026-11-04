@@ -88,9 +88,7 @@ const api = {
   async edit(row, pin){
     if (DEMO) { const r = state.demo.find(x => x.id === row.id); if (r) Object.assign(r, row); return; }
     const args = { p_id: row.id, p_data: row.data, p_topico: row.topico, p_topico_outro: row.topicoOutro || "", p_atividade: row.atividade, p_responsavel: row.responsavel || "" };
-    const call = (a) => pin ? state.sb.rpc("tmrd_editar", { p_pin: pin, ...a }) : state.sb.rpc("tmrd_editar_meu", { p_device: DEVICE, ...a });
-    let { error } = await call(args);
-    if (error && error.code === "PGRST202") { const { p_responsavel, ...old } = args; ({ error } = await call(old)); }   // banco ainda sem p_responsavel
+    const { error } = pin ? await state.sb.rpc("tmrd_editar_v2", { p_pin: pin, ...args }) : await state.sb.rpc("tmrd_editar_meu_v2", { p_device: DEVICE, ...args });
     if (error) throw error;
   },
   async removeAdmin(id, pin){

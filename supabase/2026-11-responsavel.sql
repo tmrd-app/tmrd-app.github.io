@@ -1,9 +1,6 @@
--- Responsável pela tarefa (supervisor/gerente): as funções de edição passam a gravar também o nome.
--- p_responsavel tem default null: versões antigas do app (sem o campo) continuam funcionando e não apagam o nome.
-drop function if exists public.tmrd_editar(text, uuid, date, text, text, text);
-drop function if exists public.tmrd_editar_meu(text, uuid, date, text, text, text);
-
-create function public.tmrd_editar(p_pin text, p_id uuid, p_data date, p_topico text, p_topico_outro text, p_atividade text, p_responsavel text default null)
+-- Responsável pela tarefa (aplicado em 04/11/2026).
+-- Funções de edição v2 gravam também o responsável; as antigas (tmrd_editar / tmrd_editar_meu) ficam para versões antigas do app.
+create or replace function public.tmrd_editar_v2(p_pin text, p_id uuid, p_data date, p_topico text, p_topico_outro text, p_atividade text, p_responsavel text)
 returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if not public.tmrd_pin_ok(p_pin) then raise exception 'PIN incorreto' using errcode = '28000'; end if;
@@ -14,7 +11,7 @@ begin
   if not found then raise exception 'Tarefa não encontrada'; end if;
 end $$;
 
-create function public.tmrd_editar_meu(p_device text, p_id uuid, p_data date, p_topico text, p_topico_outro text, p_atividade text, p_responsavel text default null)
+create or replace function public.tmrd_editar_meu_v2(p_device text, p_id uuid, p_data date, p_topico text, p_topico_outro text, p_atividade text, p_responsavel text)
 returns void language plpgsql security definer set search_path = public as $$
 begin
   if coalesce(p_device,'') = '' then raise exception 'Aparelho não identificado'; end if;
@@ -27,12 +24,11 @@ begin
   if not found then raise exception 'Só é possível editar seus lançamentos de hoje em diante sem o PIN'; end if;
 end $$;
 
-revoke all on function public.tmrd_editar(text, uuid, date, text, text, text, text) from public;
-revoke all on function public.tmrd_editar_meu(text, uuid, date, text, text, text, text) from public;
-grant execute on function public.tmrd_editar(text, uuid, date, text, text, text, text) to anon, authenticated, service_role;
-grant execute on function public.tmrd_editar_meu(text, uuid, date, text, text, text, text) to anon, authenticated, service_role;
+revoke all on function public.tmrd_editar_v2(text, uuid, date, text, text, text, text) from public;
+revoke all on function public.tmrd_editar_meu_v2(text, uuid, date, text, text, text, text) from public;
+grant execute on function public.tmrd_editar_v2(text, uuid, date, text, text, text, text) to anon, authenticated, service_role;
+grant execute on function public.tmrd_editar_meu_v2(text, uuid, date, text, text, text, text) to anon, authenticated, service_role;
 
 -- Responsável obrigatório para tarefas novas e editadas. NOT VALID: não cobra das tarefas antigas (sem nome).
-alter table public.tmrd_registros drop constraint if exists tmrd_responsavel_obrigatorio;
 alter table public.tmrd_registros add constraint tmrd_responsavel_obrigatorio
   check (char_length(trim(coalesce(responsavel, ''))) > 0) not valid;
