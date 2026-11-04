@@ -20,20 +20,24 @@ const TOPICS = [
   {k:"outros", n:"Outros", i:P('<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>')},
 ];
 const TMAP = Object.fromEntries(TOPICS.map(t => [t.k, t]));
-/* ---------- responsáveis (gerência e supervisores) — para incluir alguém, acrescente {n: nome, a: área} ---------- */
+/* ---------- responsáveis (gerência e supervisores) — para incluir alguém, acrescente {n: nome e sobrenome, a: área} ---------- */
 const AREAS = ["Gerência","Produção","Back-end","Front-end","Processos","Elétrica","Logística","Qualidade","BOE","EHS"];
 const RESPONSAVEIS = [
-  {n:"Juliano De Assis", a:"Gerência"}, {n:"Gustavo Alves", a:"Gerência"}, {n:"Bernardo Castro de Assis Pereira", a:"Gerência"},
-  {n:"Claudio Gomes", a:"Logística"}, {n:"Jennefer Da Silva Florentino", a:"Qualidade"},
-  {n:"Mario Sergio Pinheiro Silva", a:"BOE"}, {n:"Luana Da Silva Lima", a:"EHS"},
-  {n:"Andre Fioqui Moreira", a:"Produção"}, {n:"Damiana Xavier", a:"Produção"}, {n:"Homero Mata da Silva", a:"Elétrica"},
-  {n:"Luana Barbara de Almeida Lima", a:"Produção"}, {n:"Lucas Mateus Da Silva Pinto", a:"Back-end"},
-  {n:"Raffael Rodrigues Fonseca", a:"Produção"},
-  {n:"Rosemar Luis De Paula Sales", a:"Produção"}, {n:"Samuel Henrique Messias Ferreira", a:"Processos"},
-  {n:"Savoy Costa", a:"Front-end"},
+  // f = nome completo da planilha (só para reconhecer o nome que um celular já tinha guardado)
+  {n:"Juliano Assis", a:"Gerência", f:"Juliano De Assis"}, {n:"Gustavo Alves", a:"Gerência"},
+  {n:"Bernardo Pereira", a:"Gerência", f:"Bernardo Castro de Assis Pereira"},
+  {n:"André Moreira", a:"Produção", f:"Andre Fioqui Moreira"}, {n:"Damiana Xavier", a:"Produção"},
+  {n:"Luana Bárbara", a:"Produção", f:"Luana Barbara de Almeida Lima"}, {n:"Raffael Fonseca", a:"Produção", f:"Raffael Rodrigues Fonseca"},
+  {n:"Rosemar Sales", a:"Produção", f:"Rosemar Luis De Paula Sales"},
+  {n:"Lucas Mateus", a:"Back-end", f:"Lucas Mateus Da Silva Pinto"}, {n:"Savoy Costa", a:"Front-end"},
+  {n:"Samuel Ferreira", a:"Processos", f:"Samuel Henrique Messias Ferreira"}, {n:"Homero Silva", a:"Elétrica", f:"Homero Mata da Silva"},
+  {n:"Cláudio Gomes", a:"Logística", f:"Claudio Gomes"}, {n:"Jennefer Florentino", a:"Qualidade", f:"Jennefer Da Silva Florentino"},
+  {n:"Mário Silva", a:"BOE", f:"Mario Sergio Pinheiro Silva"}, {n:"Luana Lima", a:"EHS", f:"Luana Da Silva Lima"},
 ].sort((x,y) => AREAS.indexOf(x.a) - AREAS.indexOf(y.a) || x.n.localeCompare(y.n, "pt-BR"));
 const RNAMES = RESPONSAVEIS.map(r => r.n);
 const areaOf = (name) => RESPONSAVEIS.find(r => r.n === name)?.a || "Outros";
+const shortName = (name) => RESPONSAVEIS.find(r => r.f === name)?.n || name;
+const areaTag = (a) => `<span class="atag">${esc(a)}</span>`;
 const OUTRO_RESP = "__outro";
 const USER_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>';
 const CONTROLES = ["PT emitida","APR / ART","Bloqueio LOTO","Isolamento de área","Vigia / observador","EPI específico","DDS realizado"];
@@ -168,7 +172,7 @@ function fillResp(sel){
   sel.innerHTML = `<option value="">Selecione seu nome</option>${groups}<optgroup label="Não está na lista"><option value="${OUTRO_RESP}">Outro (digitar nome)</option></optgroup>`;
 }
 function setResp(sel, box, inp, name){
-  const inList = RNAMES.includes(name);
+  name = shortName(name); const inList = RNAMES.includes(name);
   sel.value = !name ? "" : inList ? name : OUTRO_RESP;
   inp.value = name && !inList ? name : ""; box.hidden = sel.value !== OUTRO_RESP;
   syncPick(sel);
@@ -176,7 +180,7 @@ function setResp(sel, box, inp, name){
 /* botão que abre a lista própria; o <select> escondido continua guardando o valor */
 function syncPick(sel){
   const b = sel._pick; if (!b) return; const v = sel.value;
-  b.innerHTML = !v ? `<span class="ph">Selecione seu nome</span>` : v === OUTRO_RESP ? `<span>Outro (digitar nome)</span>` : `<span>${esc(v)}<small>${areaOf(v)}</small></span>`;
+  b.innerHTML = !v ? `<span class="ph">Selecione seu nome</span>` : v === OUTRO_RESP ? `<span>Outro (digitar nome)</span>` : `<span class="pn">${esc(v)}${areaTag(areaOf(v))}</span>`;
 }
 function attachPick(sel){
   const b = document.createElement("button"); b.type = "button"; b.className = "field pick"; b.setAttribute("aria-haspopup", "listbox");
@@ -184,11 +188,12 @@ function attachPick(sel){
 }
 let pickSel = null;
 function paintPick(){
-  const q = $("respFind").value.trim().toLowerCase(), cur = pickSel.value;
+  const norm = (t) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const q = norm($("respFind").value.trim()), cur = pickSel.value;
   const item = (v, label) => `<button type="button" class="ri" role="option" data-v="${esc(v)}" aria-selected="${v === cur}">${esc(label)}</button>`;
-  const html = AREAS.map(a => { const it = RESPONSAVEIS.filter(r => r.a === a && r.n.toLowerCase().includes(q));
-    return it.length ? `<div class="rg">${a}</div>${it.map(r => item(r.n, r.n)).join("")}` : ""; }).join("");
-  $("respList").innerHTML = (html || `<div class="none">Nenhum nome encontrado.</div>`) + `<div class="rg">Não está na lista</div>${item(OUTRO_RESP, "Outro (digitar nome)")}`;
+  const html = AREAS.map(a => { const it = RESPONSAVEIS.filter(r => r.a === a && norm(r.n + " " + (r.f || "")).includes(q));
+    return it.length ? `<div class="rg">${areaTag(a)}</div>${it.map(r => item(r.n, r.n)).join("")}` : ""; }).join("");
+  $("respList").innerHTML = (html || `<div class="none">Nenhum nome encontrado.</div>`) + `<div class="rg"><span class="atag off">Não está na lista</span></div>${item(OUTRO_RESP, "Outro (digitar nome)")}`;
 }
 function openPick(sel){ pickSel = sel; $("respFind").value = ""; paintPick(); $("respModal").hidden = false; $("respList").querySelector('[aria-selected="true"]')?.scrollIntoView({block:"center"}); }
 const closePick = () => { $("respModal").hidden = true; pickSel?._pick.focus(); pickSel = null; };
@@ -260,7 +265,7 @@ function renderMine(){
       : `<span style="display:flex;gap:6px"><button class="mini cancel" data-a="edit" data-id="${r.id}">Editar</button><button class="mini" data-a="ask" data-id="${r.id}">Excluir</button></span>`;
     return `<article class="card"><div class="ic">${t.i}</div>
       <div class="body"><div class="tt">${esc(topicLabel(r))}</div><div class="ac">${esc(r.atividade)}</div>
-        ${r.responsavel ? `<div class="meta"><span class="who">${USER_IC}${esc(r.responsavel)}</span></div>` : ""}</div>
+        ${r.responsavel ? `<div class="meta"><span class="who">${USER_IC}${esc(r.responsavel)}${areaTag(areaOf(r.responsavel))}</span></div>` : ""}</div>
       <div class="side"><span class="dpill ${r.data === state.today ? "today" : ""}">${esc(dayLabel(r.data))}</span>${del}</div></article>`;
   }).join("") : `<div class="empty">${EMPTY_IC}<b>Nenhuma tarefa lançada por este celular</b>Escolha a data e o tópico, descreva a atividade e toque em Enviar. Ela aparece no painel da TV na hora.</div>`;
 }
@@ -284,7 +289,7 @@ function renderBoard(){
   const body = TOPICS.map(t => `<tr><th class="area" scope="row"><span class="tlab">${t.i}<span>${t.n}</span></span></th>${days.map(d => {
       const items = (grid[t.k+"|"+d] || []).sort(sortRows);
       const cls = `cell${d === state.today ? " today" : ""}${d < state.today ? " past" : ""}`;
-      return `<td class="${cls}">${items.map(r => `<div class="task ed" data-id="${r.id}" title="Toque para editar"><span class="x">${esc(r.atividade)}</span>${r.responsavel ? `<span class="who">${USER_IC}${esc(r.responsavel)}</span>` : ""}${r.topico === "outros" && r.topicoOutro ? `<span class="m">${esc(r.topicoOutro)}</span>` : ""}</div>`).join("")}</td>`;
+      return `<td class="${cls}">${items.map(r => `<div class="task ed" data-id="${r.id}" title="Toque para editar"><span class="x">${esc(r.atividade)}</span>${r.responsavel ? `<span class="who">${USER_IC}${esc(r.responsavel)}${areaTag(areaOf(r.responsavel))}</span>` : ""}${r.topico === "outros" && r.topicoOutro ? `<span class="m">${esc(r.topicoOutro)}</span>` : ""}</div>`).join("")}</td>`;
     }).join("")}</tr>`).join("");
   $("mx").innerHTML = head + `<tbody>${body}</tbody>`;
 }
@@ -519,10 +524,10 @@ function renderResp(rows){
   $("iArea").innerHTML = areas.map(a => `<div class="hb"><span class="nm">${a}</span><span class="tr"><i style="width:${byA[a]/mx*100}%"></i></span><span class="ct">${byA[a]}</span></div>`).join("");
   // quem ainda não lançou hoje (só quem está na lista)
   const falta = list.filter(s => s.a !== "Outros" && !s.hoje);
-  $("iFalta").innerHTML = `<div class="pend">${falta.length ? falta.map(s => `<span>${esc(s.n)} <small>${s.a}</small></span>`).join("") : `<span class="ok">Todos já lançaram a TMRD de hoje</span>`}</div>`;
+  $("iFalta").innerHTML = `<div class="pend">${falta.length ? falta.map(s => `<span>${esc(s.n)} ${areaTag(s.a)}</span>`).join("") : `<span class="ok">Todos já lançaram a TMRD de hoje</span>`}</div>`;
   // tabela
   $("iResp").innerHTML = `<table class="rk"><thead><tr><th>Responsável</th><th>Área</th><th class="num">TMRDs</th><th class="num">Dias com lançamento</th><th>Último</th><th>Hoje</th></tr></thead><tbody>${
-    list.map(s => `<tr class="${s.total ? "" : "zero"}"><td>${esc(s.n)}</td><td>${s.a}</td><td class="num">${s.total}</td><td class="num">${s.dias.size}</td><td>${s.ultimo ? ddmm(s.ultimo) : "—"}</td><td>${s.hoje ? '<span class="sim">✓ lançou</span>' : '<span class="nao">pendente</span>'}</td></tr>`).join("")
+    list.map(s => `<tr class="${s.total ? "" : "zero"}"><td>${esc(s.n)}</td><td>${areaTag(s.a)}</td><td class="num">${s.total}</td><td class="num">${s.dias.size}</td><td>${s.ultimo ? ddmm(s.ultimo) : "—"}</td><td>${s.hoje ? '<span class="sim">✓ lançou</span>' : '<span class="nao">pendente</span>'}</td></tr>`).join("")
   }</tbody></table>${semNome ? `<p class="kempty">${semNome} tarefa(s) do período sem responsável (lançadas antes do campo existir).</p>` : ""}`;
 }
 $("kRespCsv").addEventListener("click", () => {
@@ -597,7 +602,7 @@ function seedDemo(){
   const t = state.today, iso = new Date().toISOString();
   const mk = (o) => ({ id: uuid(), criadoEm: iso, topicoOutro:"", local:"", inicio:"", fim:"", turno:"", controles:[], deviceId:"exemplo", responsavel:"", ...o });
   state.demo = [
-    mk({ data:t, topico:"logistica", atividade:"Armazém operando acima de 95% de ocupação", turno:"2º", responsavel:"Claudio Gomes" }),
+    mk({ data:t, topico:"logistica", atividade:"Armazém operando acima de 95% de ocupação", turno:"2º", responsavel:"Cláudio Gomes" }),
     mk({ data:t, topico:"quente", atividade:"Solda em suporte da esteira de paletes", local:"Linha 2", inicio:"16:30", fim:"18:00", responsavel:"Damiana Xavier" }),
     mk({ data:t, topico:"energias", atividade:"Intervenção no painel elétrico do compressor", inicio:"19:00" }),
     mk({ data:addDays(t,1), topico:"altura", atividade:"Troca de luminária no mezanino", local:"Mezanino doca 4" }),
