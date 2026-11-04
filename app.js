@@ -20,6 +20,15 @@ const TOPICS = [
   {k:"outros", n:"Outros", i:P('<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>')},
 ];
 const TMAP = Object.fromEntries(TOPICS.map(t => [t.k, t]));
+/* ---------- responsáveis (supervisores e gerentes) — para incluir alguém, acrescente o nome aqui ---------- */
+const RESPONSAVEIS = [
+  "Andre Fioqui Moreira", "Bernardo Castro de Assis Pereira", "Claudio Gomes", "Damiana Xavier", "Homero Mata da Silva",
+  "Jennefer Da Silva Florentino", "Juliano De Assis", "Luana Barbara de Almeida Lima", "Luana Da Silva Lima",
+  "Lucas Mateus Da Silva Pinto", "Luiz Gustavo", "Mario Sergio Pinheiro Silva", "Raffael Rodrigues Fonseca",
+  "Rosemar Luis De Paula Sales", "Samuel Henrique Messias Ferreira", "Savoy Costa",
+].sort((a,b) => a.localeCompare(b, "pt-BR"));
+const OUTRO_RESP = "__outro";
+const USER_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>';
 const CONTROLES = ["PT emitida","APR / ART","Bloqueio LOTO","Isolamento de área","Vigia / observador","EPI específico","DDS realizado"];
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -71,7 +80,7 @@ const api = {
   },
   async edit(row, pin){
     if (DEMO) { const r = state.demo.find(x => x.id === row.id); if (r) Object.assign(r, row); return; }
-    const args = { p_id: row.id, p_data: row.data, p_topico: row.topico, p_topico_outro: row.topicoOutro || "", p_atividade: row.atividade };
+    const args = { p_id: row.id, p_data: row.data, p_topico: row.topico, p_topico_outro: row.topicoOutro || "", p_atividade: row.atividade, p_responsavel: row.responsavel || "" };
     const { error } = pin ? await state.sb.rpc("tmrd_editar", { p_pin: pin, ...args }) : await state.sb.rpc("tmrd_editar_meu", { p_device: DEVICE, ...args });
     if (error) throw error;
   },
@@ -145,6 +154,19 @@ $("topics").addEventListener("click", e => {
 
 function toast(msg, bad){ const t = $("toast"); t.textContent = msg; t.classList.toggle("bad", !!bad); t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 2800); }
 
+/* responsável: select com a lista + "Outro" para digitar; o celular lembra o último nome usado */
+const RESP_KEY = "tmrd.responsavel";
+function fillResp(sel){ sel.innerHTML = `<option value="">Selecione seu nome</option>${RESPONSAVEIS.map(n => `<option>${esc(n)}</option>`).join("")}<option value="${OUTRO_RESP}">Outro (digitar nome)</option>`; }
+function setResp(sel, box, inp, name){
+  const inList = RESPONSAVEIS.includes(name);
+  sel.value = !name ? "" : inList ? name : OUTRO_RESP;
+  inp.value = name && !inList ? name : ""; box.hidden = sel.value !== OUTRO_RESP;
+}
+const readResp = (sel, inp) => sel.value === OUTRO_RESP ? inp.value.trim().replace(/\s+/g, " ") : sel.value;
+fillResp($("resp")); fillResp($("edResp"));
+setResp($("resp"), $("respOutroBox"), $("respOutro"), store.get(RESP_KEY) || "");
+$("resp").addEventListener("change", () => { $("respOutroBox").hidden = $("resp").value !== OUTRO_RESP; if (!$("respOutroBox").hidden) $("respOutro").focus(); });
+$("edResp").addEventListener("change", () => { $("edRespOutroBox").hidden = $("edResp").value !== OUTRO_RESP; });
 function resetForm(){
   $("atividade").value = ""; $("outroTxt").value = "";
   state.topic = null; state.ctrls.clear();
@@ -161,12 +183,15 @@ $("frm").addEventListener("submit", async e => {
   if (!state.topic) { err.textContent = "Escolha o tópico da tarefa."; $("topics").scrollIntoView({behavior:"smooth", block:"center"}); return; }
   if (state.topic === "outros" && !$("outroTxt").value.trim()) { err.textContent = "Especifique o tópico em “Outros”."; $("outroTxt").focus(); return; }
   if (!atividade) { err.textContent = "Descreva a atividade."; $("atividade").focus(); return; }
+  const responsavel = readResp($("resp"), $("respOutro"));
+  if (!responsavel) { err.textContent = "Informe o responsável pela tarefa."; ($("resp").value === OUTRO_RESP ? $("respOutro") : $("resp")).focus(); return; }
+  store.set(RESP_KEY, responsavel);
   const row = {
     id: uuid(), data: state.dia, criadoEm: new Date().toISOString(),
     topico: state.topic, topicoOutro: state.topic === "outros" ? $("outroTxt").value.trim() : "",
     atividade, area: "", local: "",
     turno: "", inicio: "", fim: "",
-    controles: [], responsavel: "", deviceId: DEVICE,
+    controles: [], responsavel, deviceId: DEVICE,
   };
   $("send").disabled = true;
   try {
@@ -198,7 +223,7 @@ function renderMine(){
       : `<span style="display:flex;gap:6px"><button class="mini cancel" data-a="edit" data-id="${r.id}">Editar</button><button class="mini" data-a="ask" data-id="${r.id}">Excluir</button></span>`;
     return `<article class="card"><div class="ic">${t.i}</div>
       <div class="body"><div class="tt">${esc(topicLabel(r))}</div><div class="ac">${esc(r.atividade)}</div>
-        </div>
+        ${r.responsavel ? `<div class="meta"><span class="who">${USER_IC}${esc(r.responsavel)}</span></div>` : ""}</div>
       <div class="side"><span class="dpill ${r.data === state.today ? "today" : ""}">${esc(dayLabel(r.data))}</span>${del}</div></article>`;
   }).join("") : `<div class="empty">${EMPTY_IC}<b>Nenhuma tarefa lançada por este celular</b>Escolha a data e o tópico, descreva a atividade e toque em Enviar. Ela aparece no painel da TV na hora.</div>`;
 }
@@ -222,7 +247,7 @@ function renderBoard(){
   const body = TOPICS.map(t => `<tr><th class="area" scope="row"><span class="tlab">${t.i}<span>${t.n}</span></span></th>${days.map(d => {
       const items = (grid[t.k+"|"+d] || []).sort(sortRows);
       const cls = `cell${d === state.today ? " today" : ""}${d < state.today ? " past" : ""}`;
-      return `<td class="${cls}">${items.map(r => `<div class="task ed" data-id="${r.id}" title="Toque para editar"><span class="x">${esc(r.atividade)}</span>${r.topico === "outros" && r.topicoOutro ? `<span class="m">${esc(r.topicoOutro)}</span>` : ""}</div>`).join("")}</td>`;
+      return `<td class="${cls}">${items.map(r => `<div class="task ed" data-id="${r.id}" title="Toque para editar"><span class="x">${esc(r.atividade)}</span>${r.responsavel ? `<span class="who">${USER_IC}${esc(r.responsavel)}</span>` : ""}${r.topico === "outros" && r.topicoOutro ? `<span class="m">${esc(r.topicoOutro)}</span>` : ""}</div>`).join("")}</td>`;
     }).join("")}</tr>`).join("");
   $("mx").innerHTML = head + `<tbody>${body}</tbody>`;
 }
@@ -257,7 +282,7 @@ function openEdit(id){
   edMine = r.deviceId === DEVICE && r.data >= addDays(state.today, -1);
   $("edData").value = r.data; $("edTopico").value = TMAP[r.topico] ? r.topico : "outros";
   $("edOutro").value = r.topicoOutro || ""; $("edOutroBox").hidden = $("edTopico").value !== "outros";
-  $("edAtiv").value = r.atividade; $("edPin").value = getPin(); $("edErr").textContent = "";
+  $("edAtiv").value = r.atividade; setResp($("edResp"), $("edRespOutroBox"), $("edRespOutro"), r.responsavel || ""); $("edPin").value = getPin(); $("edErr").textContent = "";
   $("edPinBox").hidden = edMine;
   $("edDel").textContent = "Excluir"; $("edDel").classList.remove("confirm");
   $("edModal").hidden = false; $("edAtiv").focus();
@@ -271,10 +296,12 @@ $("edForm").addEventListener("submit", async e => {
   const atividade = $("edAtiv").value.trim(), topico = $("edTopico").value, pin = edMine ? "" : $("edPin").value.trim();
   if (!$("edData").value) { $("edErr").textContent = "Informe a data."; return; }
   if (!atividade) { $("edErr").textContent = "Descreva a atividade."; return; }
+  const responsavel = readResp($("edResp"), $("edRespOutro"));
+  if (!responsavel) { $("edErr").textContent = "Informe o responsável."; return; }
   if (!edMine && !pin) { $("edErr").textContent = "Digite o PIN do administrador."; $("edPin").focus(); return; }
   $("edSave").disabled = true;
   try {
-    await api.edit({ ...edRow, data: $("edData").value, topico, topicoOutro: topico === "outros" ? $("edOutro").value.trim() : "", atividade }, pin);
+    await api.edit({ ...edRow, data: $("edData").value, topico, topicoOutro: topico === "outros" ? $("edOutro").value.trim() : "", atividade, responsavel }, pin);
     if (pin) setPin(pin);
     closeEdit(); toast("Tarefa atualizada"); refresh();
   } catch (x) { $("edErr").textContent = edError(x); if (/PIN/i.test(String(x?.message))) setPin(""); }
@@ -337,7 +364,7 @@ $("csv").addEventListener("click", () => {
   const days = boardDays(), q = (v) => `"${String(v ?? "").replace(/"/g,'""')}"`;
   const grid = {}; state.board.forEach(r => { const k = (TMAP[r.topico] ? r.topico : "outros")+"|"+r.data; (grid[k] ||= []).push(r); });
   const lines = [["Tópicos", ...days.map(d => `${DIAS3[dowOf(d)]} ${fmtDate(d)}`)].map(q).join(";")];
-  TOPICS.forEach(t => lines.push([t.n, ...days.map(d => (grid[t.k+"|"+d] || []).sort(sortRows).map(r => r.atividade).join("\n"))].map(q).join(";")));
+  TOPICS.forEach(t => lines.push([t.n, ...days.map(d => (grid[t.k+"|"+d] || []).sort(sortRows).map(r => r.responsavel ? `${r.atividade} — ${r.responsavel}` : r.atividade).join("\n"))].map(q).join(";")));
   const blob = new Blob(["﻿" + lines.join("\r\n")], {type:"text/csv;charset=utf-8"});
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `TMRD_${days[0]}_a_${days[days.length-1]}.csv`;
   document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
@@ -388,7 +415,7 @@ function renderKpi(){
   $("iAdHoje").className = "v " + (hoje.length ? "good" : "bad");
   $("iAdHojeH").textContent = hoje.length ? `${new Set(hoje.map(r => r.topico)).size} tópico(s) de risco` : "nenhuma TMRD registrada ainda";
   $("iPend").innerHTML = hoje.length
-    ? hoje.sort(sortRows).map(r => `<span class="ok">${esc((TMAP[r.topico]?.n || "Outros"))}: ${esc(r.atividade)}</span>`).join("")
+    ? hoje.sort(sortRows).map(r => `<span class="ok">${esc((TMAP[r.topico]?.n || "Outros"))}: ${esc(r.atividade)}${r.responsavel ? ` — ${esc(r.responsavel)}` : ""}</span>`).join("")
     : `<span>Nenhuma TMRD registrada hoje</span>`;
 
   // dias úteis com registro (adesão), contados a partir do primeiro registro
@@ -447,8 +474,8 @@ $("bkp").addEventListener("click", async () => {
   try {
     const rows = await api.all();
     const q = (v) => `"${String(v ?? "").replace(/"/g,'""')}"`;
-    const head = ["Data","Dia da semana","Tópico","Atividade","Registrado em","Origem","ID"];
-    const lines = [head.map(q).join(";"), ...rows.map(r => [fmtDate(r.data), DIAS[dowOf(r.data)], topicLabel(r), r.atividade, r.criadoEm ? new Date(r.criadoEm).toLocaleString("pt-BR") : "", r.deviceId ? "app" : "importação", r.id].map(q).join(";"))];
+    const head = ["Data","Dia da semana","Tópico","Atividade","Responsável","Registrado em","Origem","ID"];
+    const lines = [head.map(q).join(";"), ...rows.map(r => [fmtDate(r.data), DIAS[dowOf(r.data)], topicLabel(r), r.atividade, r.responsavel, r.criadoEm ? new Date(r.criadoEm).toLocaleString("pt-BR") : "", r.deviceId ? "app" : "importação", r.id].map(q).join(";"))];
     const blob = new Blob(["\ufeff" + lines.join("\r\n")], {type:"text/csv;charset=utf-8"});
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `TMRD_historico_completo_${state.today}.csv`;
     document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
@@ -493,8 +520,8 @@ function seedDemo(){
   const t = state.today, iso = new Date().toISOString();
   const mk = (o) => ({ id: uuid(), criadoEm: iso, topicoOutro:"", local:"", inicio:"", fim:"", turno:"", controles:[], deviceId:"exemplo", responsavel:"", ...o });
   state.demo = [
-    mk({ data:t, topico:"logistica", atividade:"Armazém operando acima de 95% de ocupação", turno:"2º" }),
-    mk({ data:t, topico:"quente", atividade:"Solda em suporte da esteira de paletes", local:"Linha 2", inicio:"16:30", fim:"18:00" }),
+    mk({ data:t, topico:"logistica", atividade:"Armazém operando acima de 95% de ocupação", turno:"2º", responsavel:"Claudio Gomes" }),
+    mk({ data:t, topico:"quente", atividade:"Solda em suporte da esteira de paletes", local:"Linha 2", inicio:"16:30", fim:"18:00", responsavel:"Damiana Xavier" }),
     mk({ data:t, topico:"energias", atividade:"Intervenção no painel elétrico do compressor", inicio:"19:00" }),
     mk({ data:addDays(t,1), topico:"altura", atividade:"Troca de luminária no mezanino", local:"Mezanino doca 4" }),
     mk({ data:addDays(t,1), topico:"icamento", atividade:"Içamento de bobina com ponte rolante" }),

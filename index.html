@@ -175,6 +175,11 @@ table.mx{border-collapse:separate;border-spacing:0;width:100%;min-width:640px;ta
 .task .x{font-size:16px;font-weight:600;line-height:1.35;overflow-wrap:break-word;hyphens:auto}
 .task .t{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--blue-txt);font-weight:700}
 .task .m{font-size:12px;color:var(--muted)}
+.who{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:500;color:var(--muted)}
+.who svg{width:14px;height:14px;flex:none;color:var(--blue-txt)}
+.task .who svg{grid-row:auto;margin-top:0}
+select.field{appearance:auto}
+.hint{font-size:12px;color:var(--dim)}
 
 /* ---------- indicadores ---------- */
 .kseg{margin-left:auto}
@@ -253,6 +258,7 @@ body.tv .summary .kpi .v{font-size:48px}
 body.tv .summary{grid-template-columns:230px minmax(0,1fr) auto}
 body.tv .ht{font-size:16px;padding:7px 12px 7px 10px}body.tv .ht svg{width:20px;height:20px}body.tv .ht b{font-size:15px}
 body.tv .task .x{font-size:22px}
+body.tv .task .who{font-size:16px}body.tv .task .who svg{width:18px;height:18px}
 body.tv .task{padding:10px 12px;margin-bottom:10px}
 body.tv .mx thead th .d{font-size:24px}
 body.tv .mx .area{font-size:16px}
@@ -322,19 +328,26 @@ body.tv .qrbox b{font-size:26px}
   <section class="view" id="v-lancar">
     <form class="form" id="frm" novalidate>
       <div class="q">
-        <div class="q-h"><span class="n">01</span><span class="t">Data da tarefa</span><em>*</em></div>
+        <div class="q-h"><span class="n">01</span><label for="resp">Responsável</label><em>*</em></div>
+        <select class="field" id="resp" aria-describedby="respHint"></select>
+        <div class="edf" id="respOutroBox" hidden><input class="field" id="respOutro" maxlength="50" placeholder="Nome e sobrenome" autocomplete="name"></div>
+        <span class="hint" id="respHint">Este celular lembra o seu nome nos próximos lançamentos.</span>
+      </div>
+
+      <div class="q">
+        <div class="q-h"><span class="n">02</span><span class="t">Data da tarefa</span><em>*</em></div>
         <div class="seg" id="dia"></div>
         <input class="field" type="date" id="diaOutra" hidden aria-label="Outra data">
       </div>
 
       <div class="q">
-        <div class="q-h"><span class="n">02</span><span class="t">Tópico</span><em>*</em></div>
+        <div class="q-h"><span class="n">03</span><span class="t">Tópico</span><em>*</em></div>
         <div class="topics" id="topics" role="radiogroup" aria-label="Tópico"></div>
         <input class="field" id="outroTxt" placeholder="Especifique o tópico" hidden maxlength="60">
       </div>
 
       <div class="q">
-        <div class="q-h"><span class="n">03</span><label for="atividade">Atividade</label><em>*</em></div>
+        <div class="q-h"><span class="n">04</span><label for="atividade">Atividade</label><em>*</em></div>
         <textarea class="field" id="atividade" maxlength="280" placeholder="Ex.: Armazém operando acima de 95% de ocupação"></textarea>
       </div>
 
@@ -396,6 +409,8 @@ body.tv .qrbox b{font-size:26px}
     <div class="edf"><label class="sub" for="edTopico">Tópico</label><select class="field" id="edTopico"></select></div>
     <div class="edf" id="edOutroBox" hidden><label class="sub" for="edOutro">Especifique</label><input class="field" id="edOutro" maxlength="60"></div>
     <div class="edf"><label class="sub" for="edAtiv">Atividade</label><textarea class="field" id="edAtiv" maxlength="280"></textarea></div>
+    <div class="edf"><label class="sub" for="edResp">Responsável</label><select class="field" id="edResp"></select></div>
+    <div class="edf" id="edRespOutroBox" hidden><input class="field" id="edRespOutro" maxlength="50" placeholder="Nome e sobrenome"></div>
     <div class="edf" id="edPinBox"><label class="sub" for="edPin">PIN do administrador</label><input class="field" id="edPin" type="password" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="PIN para editar ou excluir"></div>
     <div class="err" id="edErr" role="alert"></div>
     <div class="acts2">
@@ -420,9 +435,9 @@ body.tv .qrbox b{font-size:26px}
 </div>
 <div class="toast" id="toast" role="status"></div>
 
-<script src="config.js?v=12"></script>
+<script src="config.js?v=13"></script>
 <script src="lib/qrcode.js"></script>
 <script src="lib/supabase.js"></script>
-<script src="app.js?v=12"></script>
+<script src="app.js?v=13"></script>
 </body>
 </html>

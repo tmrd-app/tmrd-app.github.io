@@ -27,6 +27,9 @@ Instalar o app é opcional: quem preferir tem o atalho na tela inicial (abaixo).
 - **iPhone (Safari):** abrir o link → Compartilhar → Adicionar à Tela de Início.
 - **TV:** abrir `.../#tv` no navegador da TV ou do PC ligado nela.
 
+## Responsáveis
+A lista de supervisores e gerentes fica em `RESPONSAVEIS`, no início do `app.js`. Para incluir ou tirar alguém, edite a lista e publique (troque a versão, abaixo). Quem não está na lista pode escolher "Outro" e digitar o nome.
+
 ## Atualizar versão
 Ao subir mudanças, troque `VERSION` em `sw.js` (ex.: `tmrd-v12`) e o `?v=` de `app.js`/`config.js` no `index.html`. TV, notebook e celulares conferem a cada 5 min (e ao voltar para o app) e recarregam sozinhos quando há versão nova.
 
