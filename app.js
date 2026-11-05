@@ -21,7 +21,7 @@ const TOPICS = [
 ];
 const TMAP = Object.fromEntries(TOPICS.map(t => [t.k, t]));
 /* ---------- responsáveis (gerência e supervisores) — para incluir alguém, acrescente {n: nome e sobrenome, a: área} ---------- */
-const AREAS = ["Gerência","Produção","Back-end","Front-end","Processos","Elétrica","Logística","Qualidade","BOE","EHS"];
+const AREAS = ["Gerência","Produção","Back-end","Front-end","Processos","Elétrica","Logística","Qualidade","BOE","RH"];
 const RESPONSAVEIS = [
   // f = nome completo da planilha (só para reconhecer o nome que um celular já tinha guardado)
   {n:"Juliano Assis", a:"Gerência", f:"Juliano De Assis"}, {n:"Gustavo Alves", a:"Gerência"},
@@ -32,7 +32,7 @@ const RESPONSAVEIS = [
   {n:"Lucas Mateus", a:"Back-end", f:"Lucas Mateus Da Silva Pinto"}, {n:"Savoy Costa", a:"Front-end"},
   {n:"Samuel Ferreira", a:"Processos", f:"Samuel Henrique Messias Ferreira"}, {n:"Homero Silva", a:"Elétrica", f:"Homero Mata da Silva"},
   {n:"Cláudio Gomes", a:"Logística", f:"Claudio Gomes"}, {n:"Jennefer Florentino", a:"Qualidade", f:"Jennefer Da Silva Florentino"},
-  {n:"Mário Silva", a:"BOE", f:"Mario Sergio Pinheiro Silva"}, {n:"Luana Lima", a:"EHS", f:"Luana Da Silva Lima"},
+  {n:"Mário Silva", a:"BOE", f:"Mario Sergio Pinheiro Silva"}, {n:"Luana Lima", a:"RH", f:"Luana Da Silva Lima"},
 ].sort((x,y) => AREAS.indexOf(x.a) - AREAS.indexOf(y.a) || x.n.localeCompare(y.n, "pt-BR"));
 const RNAMES = RESPONSAVEIS.map(r => r.n);
 const areaOf = (name) => RESPONSAVEIS.find(r => r.n === name)?.a || "Outros";
