@@ -23,20 +23,20 @@ const TMAP = Object.fromEntries(TOPICS.map(t => [t.k, t]));
 /* ---------- responsáveis (gerência e supervisores) — para incluir alguém, acrescente {n: nome e sobrenome, a: área} ---------- */
 const AREAS = ["Gerência","Produção","Back-end","Front-end","Processos","Elétrica","Logística","Qualidade","BOE","RH"];
 const RESPONSAVEIS = [
-  // f = nome completo da planilha (só para reconhecer o nome que um celular já tinha guardado)
+  // f = nome completo da planilha, o = nomes usados antes (para reconhecer o nome que um celular já tinha guardado)
   {n:"Juliano Assis", a:"Gerência", f:"Juliano De Assis"}, {n:"Gustavo Alves", a:"Gerência"},
   {n:"Bernardo Pereira", a:"Gerência", f:"Bernardo Castro de Assis Pereira"},
   {n:"André Moreira", a:"Produção", f:"Andre Fioqui Moreira"}, {n:"Damiana Xavier", a:"Produção"},
   {n:"Luana Bárbara", a:"Produção", f:"Luana Barbara de Almeida Lima"}, {n:"Raffael Fonseca", a:"Produção", f:"Raffael Rodrigues Fonseca"},
   {n:"Rosemar Sales", a:"Produção", f:"Rosemar Luis De Paula Sales"},
   {n:"Lucas Mateus", a:"Back-end", f:"Lucas Mateus Da Silva Pinto"}, {n:"Savoy Costa", a:"Front-end"},
-  {n:"Samuel Ferreira", a:"Processos", f:"Samuel Henrique Messias Ferreira"}, {n:"Homero Silva", a:"Elétrica", f:"Homero Mata da Silva"},
+  {n:"Samuel Ferreira", a:"Processos", f:"Samuel Henrique Messias Ferreira"}, {n:"Homero Mata", a:"Elétrica", f:"Homero Mata da Silva", o:["Homero Silva"]},
   {n:"Cláudio Gomes", a:"Logística", f:"Claudio Gomes"}, {n:"Jennefer Florentino", a:"Qualidade", f:"Jennefer Da Silva Florentino"},
   {n:"Mário Silva", a:"BOE", f:"Mario Sergio Pinheiro Silva"}, {n:"Luana Lima", a:"RH", f:"Luana Da Silva Lima"},
 ].sort((x,y) => AREAS.indexOf(x.a) - AREAS.indexOf(y.a) || x.n.localeCompare(y.n, "pt-BR"));
 const RNAMES = RESPONSAVEIS.map(r => r.n);
 const areaOf = (name) => RESPONSAVEIS.find(r => r.n === name)?.a || "Outros";
-const shortName = (name) => RESPONSAVEIS.find(r => r.f === name)?.n || name;
+const shortName = (name) => RESPONSAVEIS.find(r => r.f === name || r.o?.includes(name))?.n || name;
 const areaTag = (a) => `<span class="atag">${esc(a)}</span>`;
 const OUTRO_RESP = "__outro";
 const USER_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>';
