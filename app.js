@@ -474,12 +474,6 @@ function renderKpi(){
   $("iTot").textContent = rows.length;
   $("iMedia").textContent = `média de ${(rows.length/Math.max(1,uteis.length)).toFixed(1).replace(".",",")} por dia útil`;
 
-  // dias úteis sem registro
-  const sem = uteis.filter(d => !comReg.has(d) && d < state.today).reverse();
-  $("iAreas").innerHTML = sem.length
-    ? `<div class="pend">${sem.slice(0,40).map(d => `<span>${DIAS3[dowOf(d)]} ${ddmm(d)}</span>`).join("")}</div>`
-    : `<div class="pend"><span class="ok">Todos os dias úteis do período tiveram TMRD</span></div>`;
-
   // tópicos
   const byT = {}; rows.forEach(r => byT[r.topico] = (byT[r.topico]||0) + 1);
   const tops = Object.entries(byT).sort((a,b) => b[1]-a[1]); const mx = Math.max(1, ...tops.map(t => t[1]));
