@@ -27,7 +27,7 @@ const RESPONSAVEIS = [
   {n:"Juliano Assis", a:"Gerência", f:"Juliano De Assis"}, {n:"Gustavo Alves", a:"Gerência"},
   {n:"Bernardo Pereira", a:"Gerência", f:"Bernardo Castro de Assis Pereira"},
   {n:"André Moreira", a:"Produção", f:"Andre Fioqui Moreira"}, {n:"Damiana Xavier", a:"Produção"},
-  {n:"Luana Bárbara", a:"Produção", f:"Luana Barbara de Almeida Lima"}, {n:"Raffael Fonseca", a:"Produção", f:"Raffael Rodrigues Fonseca"},
+  {n:"Luana Almeida", a:"Produção", f:"Luana Barbara de Almeida Lima", o:["Luana Bárbara"]}, {n:"Raffael Fonseca", a:"Produção", f:"Raffael Rodrigues Fonseca"},
   {n:"Rosemar Sales", a:"Produção", f:"Rosemar Luis De Paula Sales"},
   {n:"Lucas Mateus", a:"Back-end", f:"Lucas Mateus Da Silva Pinto"}, {n:"Savoy Costa", a:"Front-end"},
   {n:"Samuel Ferreira", a:"Processos", f:"Samuel Henrique Messias Ferreira"}, {n:"Homero Mata", a:"Elétrica", f:"Homero Mata da Silva", o:["Homero Silva"]},
