@@ -217,16 +217,33 @@ function resetForm(){
 }
 
 
+/* campo que faltou: rola até ele (descontando o banner fixo), pisca em vermelho e mostra o aviso logo abaixo */
+function warnField(el, msg){
+  clearWarn();
+  const q = el.closest(".q"); el.classList.add("alert");
+  const m = document.createElement("div"); m.className = "qmsg"; m.setAttribute("role", "alert");
+  m.innerHTML = `<i aria-hidden="true">⚠</i>${esc(msg)}`; q.appendChild(m);
+  const top = q.getBoundingClientRect().top + scrollY - (document.querySelector(".top")?.offsetHeight || 0) - 12;   // o banner fixo cobria o campo
+  scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+  toast(msg, true);
+  if (el.matches("input,textarea")) setTimeout(() => el.focus({ preventScroll: true }), 450);
+}
+function clearWarn(){ document.querySelectorAll("#frm .alert").forEach(x => x.classList.remove("alert")); document.querySelectorAll("#frm .qmsg").forEach(x => x.remove()); }
+$("frm").addEventListener("input", clearWarn);
+$("frm").addEventListener("click", e => { if (e.target.closest(".tp, #dia button")) clearWarn(); });
+$("resp").addEventListener("change", clearWarn);
+
 $("frm").addEventListener("submit", async e => {
   e.preventDefault();
   const err = $("err"); err.textContent = "";
   const atividade = $("atividade").value.trim();
-  if (!state.dia || state.dia < state.today) { err.textContent = "Escolha a data da tarefa (hoje ou dias seguintes)."; return; }
-  if (!state.topic) { err.textContent = "Escolha o tópico da tarefa."; $("topics").scrollIntoView({behavior:"smooth", block:"center"}); return; }
-  if (state.topic === "outros" && !$("outroTxt").value.trim()) { err.textContent = "Especifique o tópico em “Outros”."; $("outroTxt").focus(); return; }
-  if (!atividade) { err.textContent = "Descreva a atividade."; $("atividade").focus(); return; }
-  const responsavel = readResp($("resp"), $("respOutro"));
-  if (!responsavel) { err.textContent = "Informe o responsável pela tarefa."; ($("resp").value === OUTRO_RESP ? $("respOutro") : $("resp")._pick).focus(); return; }
+  const responsavel = readResp($("resp"), $("respOutro"));   // na ordem do formulário: 01 responsável, 02 data, 03 tópico, 04 atividade
+  if (!responsavel) return $("resp").value === OUTRO_RESP ? warnField($("respOutro"), "Digite seu nome e sobrenome.") : warnField($("resp")._pick, "Favor selecionar seu nome antes de enviar.");
+  if (!state.dia || state.dia < state.today) return warnField($("dia"), "Escolha a data da tarefa (hoje ou dias seguintes).");
+  if (!state.topic) return warnField($("topics"), "Escolha o tópico da tarefa.");
+  if (state.topic === "outros" && !$("outroTxt").value.trim()) return warnField($("outroTxt"), "Especifique o tópico em “Outros”.");
+  if (!atividade) return warnField($("atividade"), "Descreva a atividade.");
+  clearWarn();
   store.set(RESP_KEY, responsavel);
   const row = {
     id: uuid(), data: state.dia, criadoEm: new Date().toISOString(),
