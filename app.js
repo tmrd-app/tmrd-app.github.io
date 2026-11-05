@@ -443,7 +443,6 @@ $("kRange").addEventListener("click", e => {
   refresh();
 });
 const pct = (n) => `${Math.round(n*100)}%`;
-const tone = (p) => p >= .9 ? "good" : p >= .7 ? "warn" : "bad";
 function renderKpi(){
   const N = state.kDays, from = addDays(state.today, -(N-1));
   const rows = state.krows.filter(r => r.data >= from && r.data <= state.today);
@@ -454,8 +453,8 @@ function renderKpi(){
   // hoje
   const hoje = rows.filter(r => r.data === state.today);
   $("iAdHoje").textContent = hoje.length;
-  $("iAdHoje").className = "v " + (hoje.length ? "good" : "bad");
-  $("iAdHojeH").textContent = hoje.length ? `${new Set(hoje.map(r => r.topico)).size} tópico(s) de risco` : "nenhuma TMRD registrada ainda";
+  $("iAdHoje").className = "v";   // dia sem TMRD é normal: só se lança quando há tarefa de maior risco
+  $("iAdHojeH").textContent = hoje.length ? `${new Set(hoje.map(r => r.topico)).size} tópico(s) de risco` : "nenhuma tarefa de maior risco lançada";
   $("iPend").innerHTML = hoje.length
     ? hoje.sort(sortRows).map(r => `<span class="ok">${esc((TMAP[r.topico]?.n || "Outros"))}: ${esc(r.atividade)}${r.responsavel ? ` — ${esc(r.responsavel)}` : ""}</span>`).join("")
     : `<span>Nenhuma TMRD registrada hoje</span>`;
@@ -464,10 +463,9 @@ function renderKpi(){
   const first = rows.reduce((m,r) => r.data < m ? r.data : m, state.today);
   const uteis = days.filter(d => d >= first && isUtil(d));
   const comReg = new Set(rows.map(r => r.data));
-  const feitos = uteis.filter(d => comReg.has(d)).length;
-  const pAd = uteis.length ? feitos/uteis.length : 0;
-  $("iAdPer").textContent = uteis.length ? pct(pAd) : "—"; $("iAdPer").className = "v " + tone(pAd);
-  $("iAdPerH").textContent = `${feitos} de ${uteis.length} dias úteis com TMRD`;
+  const diasCom = days.filter(d => comReg.has(d)).length;
+  $("iAdPer").textContent = diasCom; $("iAdPer").className = "v";
+  $("iAdPerH").textContent = `de ${N} dias do período tiveram tarefa de maior risco`;
 
   // volume
   const NA = Math.max(1, days.filter(d => d >= first).length);
@@ -495,16 +493,42 @@ function renderKpi(){
   $("iTrend").innerHTML = svg + "</svg>";
 
   renderResp(rows);
+  renderHorario(rows);
+}
+
+/* ---------- horário do lançamento: o risco foi comunicado cedo? ---------- */
+const FAIXAS = [[0,6,"Até 6h"],[6,9,"6h às 9h"],[9,12,"9h às 12h"],[12,18,"12h às 18h"],[18,24,"Depois das 18h"]];
+function renderHorario(rows){
+  const hrs = rows.filter(r => r.deviceId && r.criadoEm).map(r => new Date(r.criadoEm).getHours());   // importados não têm horário real
+  if (!hrs.length) { $("iHora").innerHTML = `<div class="kempty">Sem lançamentos pelo app no período.</div>`; $("iHoraH").textContent = ""; return; }
+  const cnt = FAIXAS.map(([a,b]) => hrs.filter(h => h >= a && h < b).length), mx = Math.max(1, ...cnt);
+  const byH = {}; hrs.forEach(h => byH[h] = (byH[h]||0) + 1);
+  const pico = +Object.entries(byH).sort((a,b) => b[1]-a[1])[0][0];
+  const ate9 = hrs.filter(h => h < 9).length / hrs.length;
+  $("iHoraH").innerHTML = `<b>${pct(ate9)}</b> lançadas até as 9h · horário mais comum: <b>${pico}h</b>`;
+  $("iHora").innerHTML = FAIXAS.map(([,,l],i) => `<div class="hb"><span class="nm">${l}</span><span class="tr"><i style="width:${cnt[i]/mx*100}%"></i></span><span class="ct">${cnt[i]}</span></div>`).join("");
+}
+
+/* ---------- riscos por área: que tipo de risco cada área mais registra ---------- */
+function renderRiscoArea(rows){
+  const g = {};
+  rows.forEach(r => { if (!r.responsavel) return; const a = areaOf(r.responsavel), k = TMAP[r.topico] ? r.topico : "outros"; ((g[a] ||= {})[k] = (g[a][k]||0) + 1); });
+  const tot = (a) => Object.values(g[a]).reduce((s,n) => s + n, 0);
+  const areas = [...AREAS, "Outros"].filter(a => g[a]).sort((x,y) => tot(y) - tot(x));   // área com mais TMRDs primeiro
+  $("iRiscoArea").innerHTML = areas.length ? areas.map(a => {
+    const tops = Object.entries(g[a]).sort((x,y) => y[1]-x[1]);
+    return `<div class="ra"><div class="ra-a">${areaTag(a)}<b>${tot(a)}</b></div><div class="ra-t">${tops.map(([k,n]) => `<span class="ht">${TMAP[k].i}${TMAP[k].n} <b>${n}</b></span>`).join("")}</div></div>`;
+  }).join("") : `<div class="kempty">Ainda não há tarefas com responsável no período.</div>`;
 }
 
 /* ---------- KPI por responsável e por área ---------- */
 function respStats(rows){
-  const m = new Map(RESPONSAVEIS.map(r => [r.n, { n:r.n, a:r.a, total:0, dias:new Set(), ultimo:"", hoje:false }]));
+  const m = new Map(RESPONSAVEIS.map(r => [r.n, { n:r.n, a:r.a, total:0, dias:new Set(), ultimo:"", hoje:0 }]));
   let semNome = 0;
   rows.forEach(r => {
     const n = (r.responsavel || "").trim(); if (!n) { semNome++; return; }
-    if (!m.has(n)) m.set(n, { n, a:"Outros", total:0, dias:new Set(), ultimo:"", hoje:false });
-    const s = m.get(n); s.total++; s.dias.add(r.data); if (r.data > s.ultimo) s.ultimo = r.data; if (r.data === state.today) s.hoje = true;
+    if (!m.has(n)) m.set(n, { n, a:"Outros", total:0, dias:new Set(), ultimo:"", hoje:0 });
+    const s = m.get(n); s.total++; s.dias.add(r.data); if (r.data > s.ultimo) s.ultimo = r.data; if (r.data === state.today) s.hoje++;
   });
   const ord = [...AREAS, "Outros"];
   const list = [...m.values()].sort((x,y) => ord.indexOf(x.a) - ord.indexOf(y.a) || y.total - x.total || x.n.localeCompare(y.n, "pt-BR"));
@@ -512,24 +536,18 @@ function respStats(rows){
 }
 function renderResp(rows){
   const { list, semNome } = respStats(rows);
-  // por área
-  const byA = {}; list.forEach(s => byA[s.a] = (byA[s.a]||0) + s.total);
-  const areas = [...AREAS, "Outros"].filter(a => a in byA), mx = Math.max(1, ...areas.map(a => byA[a]));
-  $("iArea").innerHTML = areas.map(a => `<div class="hb"><span class="nm">${a}</span><span class="tr"><i style="width:${byA[a]/mx*100}%"></i></span><span class="ct">${byA[a]}</span></div>`).join("");
-  // quem ainda não lançou hoje (só quem está na lista)
-  const falta = list.filter(s => s.a !== "Outros" && !s.hoje);
-  $("iFalta").innerHTML = `<div class="pend">${falta.length ? falta.map(s => `<span>${esc(s.n)} ${areaTag(s.a)}</span>`).join("") : `<span class="ok">Todos já lançaram a TMRD de hoje</span>`}</div>`;
+ renderRiscoArea(rows);
   // tabela
   $("iResp").innerHTML = `<table class="rk"><thead><tr><th>Responsável</th><th>Área</th><th class="num">TMRDs</th><th class="num">Dias com lançamento</th><th>Último</th><th>Hoje</th></tr></thead><tbody>${
-    list.map(s => `<tr class="${s.total ? "" : "zero"}"><td>${esc(s.n)}</td><td>${areaTag(s.a)}</td><td class="num">${s.total}</td><td class="num">${s.dias.size}</td><td>${s.ultimo ? ddmm(s.ultimo) : "—"}</td><td>${s.hoje ? '<span class="sim">✓ lançou</span>' : '<span class="nao">pendente</span>'}</td></tr>`).join("")
+    list.map(s => `<tr class="${s.total ? "" : "zero"}"><td>${esc(s.n)}</td><td>${areaTag(s.a)}</td><td class="num">${s.total}</td><td class="num">${s.dias.size}</td><td>${s.ultimo ? ddmm(s.ultimo) : "—"}</td><td>${s.hoje ? `<span class="sim">${s.hoje} tarefa${s.hoje > 1 ? "s" : ""}</span>` : "—"}</td></tr>`).join("")
   }</tbody></table>${semNome ? `<p class="kempty">${semNome} tarefa(s) do período sem responsável (lançadas antes do campo existir).</p>` : ""}`;
 }
 $("kRespCsv").addEventListener("click", () => {
   const N = state.kDays, from = addDays(state.today, -(N-1));
   const { list } = respStats(state.krows.filter(r => r.data >= from && r.data <= state.today));
   const q = (v) => `"${String(v ?? "").replace(/"/g,'""')}"`;
-  const lines = [["Responsável","Área","TMRDs","Dias com lançamento","Último lançamento","Lançou hoje"].map(q).join(";"),
-    ...list.map(s => [s.n, s.a, s.total, s.dias.size, s.ultimo ? fmtDate(s.ultimo) : "", s.hoje ? "Sim" : "Não"].map(q).join(";"))];
+  const lines = [["Responsável","Área","TMRDs","Dias com lançamento","Último lançamento","Tarefas hoje"].map(q).join(";"),
+    ...list.map(s => [s.n, s.a, s.total, s.dias.size, s.ultimo ? fmtDate(s.ultimo) : "", s.hoje].map(q).join(";"))];
   const blob = new Blob(["\ufeff" + lines.join("\r\n")], {type:"text/csv;charset=utf-8"});
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `TMRD_por_responsavel_${from}_a_${state.today}.csv`;
   document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);

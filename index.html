@@ -234,7 +234,12 @@ table.rk{width:100%;border-collapse:collapse;font-size:14px;min-width:560px}
 .rk tr:last-child td{border-bottom:0}
 .rk .num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 .rk tr.zero td{color:var(--dim)}
-.rk .sim{color:#3ecf8e;font-weight:600}.rk .nao{color:#ffb1b2}
+.rk .sim{color:var(--blue-txt);font-weight:600}
+.kh2{margin:-4px 0 12px;font-size:13px;color:var(--muted)}.kh2 b{color:var(--fg)}
+.ra{display:grid;grid-template-columns:150px 1fr;gap:10px;align-items:start;padding:10px 0;border-bottom:1px solid var(--line)}
+.ra:last-child{border-bottom:0}.ra-a{display:flex;align-items:center;gap:8px;margin-top:3px}.ra-a b{font-family:var(--f-mono);font-size:13px}
+.ra-t{display:flex;flex-wrap:wrap;gap:6px}
+@media (max-width:560px){.ra{grid-template-columns:1fr;gap:6px}}
 @media (max-width:900px){.ktiles{grid-template-columns:1fr}.kgrid{grid-template-columns:1fr}}
 /* ---------- QR Code ---------- */
 /* resumo compacto: os dois números empilhados numa coluna, riscos ao lado, QR à direita */
@@ -420,15 +425,15 @@ body.tv .qrbox b{font-size:26px}
     <div class="bkpinfo" id="bkpInfo"></div>
     <div class="ktiles">
       <div class="kpi"><div class="l">TMRD hoje</div><div class="v" id="iAdHoje">—</div><div class="h" id="iAdHojeH"></div></div>
-      <div class="kpi"><div class="l">Adesão (dias úteis)</div><div class="v" id="iAdPer">—</div><div class="h" id="iAdPerH">dias com registro ÷ dias do período</div></div>
+      <div class="kpi"><div class="l">Dias com TMRD</div><div class="v" id="iAdPer">—</div><div class="h" id="iAdPerH"></div></div>
       <div class="kpi"><div class="l">Tarefas no período</div><div class="v" id="iTot">—</div><div class="h" id="iMedia"></div></div>
     </div>
     <div class="kgrid">
       <div class="kcard kwide"><h3>Registradas hoje</h3><div class="pend" id="iPend"></div></div>
       <div class="kcard kwide"><h3>Tarefas por dia</h3><div class="trend" id="iTrend"></div></div>
       <div class="kcard"><h3>Tópicos mais frequentes</h3><div id="iTop"></div></div>
-      <div class="kcard"><h3>TMRDs por área</h3><div id="iArea"></div></div>
-      <div class="kcard kwide"><h3>Ainda sem TMRD hoje</h3><div id="iFalta"></div></div>
+      <div class="kcard"><h3>Horário do lançamento</h3><p class="kh2" id="iHoraH"></p><div id="iHora"></div></div>
+      <div class="kcard kwide"><h3>Riscos por área <small>tipos de risco que cada área mais registra</small></h3><div id="iRiscoArea"></div></div>
       <div class="kcard kwide"><h3 class="kh">Por responsável <small>no período</small><button class="btn" id="kRespCsv" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 19h16"/></svg>Exportar</button></h3><div class="rk-wrap" id="iResp"></div></div>
     </div>
   </section>
@@ -473,9 +478,9 @@ body.tv .qrbox b{font-size:26px}
 </div>
 <div class="toast" id="toast" role="status"></div>
 
-<script src="config.js?v=20"></script>
+<script src="config.js?v=21"></script>
 <script src="lib/qrcode.js"></script>
 <script src="lib/supabase.js"></script>
-<script src="app.js?v=20"></script>
+<script src="app.js?v=21"></script>
 </body>
 </html>
