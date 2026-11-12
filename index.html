@@ -167,6 +167,11 @@ table.mx{border-collapse:separate;border-spacing:0;width:100%;min-width:640px;ta
 .mx td.cell{padding:8px;min-height:64px}
 .mx td.cell.today{background:rgba(17,64,254,.07)}
 .mx td.cell.past{opacity:.75}
+.mx tr.vazio th.area{font-weight:600;color:var(--dim);padding-top:6px;padding-bottom:6px}
+.mx tr.vazio td.cell{padding-top:4px;padding-bottom:4px}
+.mx tr.vazio .tlab svg{opacity:.6}
+body.tv .mx tr.vazio th.area{font-size:calc(clamp(13px,.75vw,32px)*var(--tvk,1));padding-top:calc(clamp(5px,.3vw,12px)*var(--tvk,1));padding-bottom:calc(clamp(5px,.3vw,12px)*var(--tvk,1))}
+body.tv .mx tr.vazio td.cell{padding-top:2px;padding-bottom:2px}
 .mx .none{color:var(--dim);font-size:13px;padding:4px}
 .task{display:grid;grid-template-columns:1fr;gap:4px;padding:9px 11px;border-radius:8px;background:var(--panel-2);border-left:3px solid var(--blue);margin-bottom:6px}
 .task:last-child{margin-bottom:0}
@@ -325,30 +330,37 @@ body.tv .brand p{font-size:clamp(15px,.85vw,36px)}
 body.tv .live{font-size:clamp(11px,.65vw,26px)}body.tv .live i{width:clamp(8px,.45vw,18px);height:clamp(8px,.45vw,18px)}
 body.tv .clock{font-size:clamp(32px,1.9vw,84px)}body.tv .clock small{font-size:clamp(10px,.6vw,24px)}
 body.tv main{padding-top:clamp(18px,1vw,40px)}
-body.tv .bar h2{font-size:clamp(28px,1.8vw,76px)}
+/* TV: sem a faixa de título (os dias já estão nas colunas); "Sair do modo TV" discreto no canto */
+body.tv .bar h2{display:none}
+body.tv .bar{position:fixed;right:10px;bottom:10px;margin:0;z-index:40;opacity:.25;transition:opacity .2s}body.tv .bar:hover{opacity:1}
+body.tv .mx thead th .d{display:inline;margin-right:.45em}body.tv .mx thead th .s{display:inline}
 body.tv .bar .btn{font-size:clamp(13px,.7vw,26px)}
-body.tv .summary{grid-template-columns:clamp(230px,13vw,560px) minmax(0,1fr) auto;gap:clamp(10px,.6vw,24px);margin-bottom:clamp(16px,.9vw,36px)}
+/* TV: resumo numa faixa só (números · riscos presentes · QR) para sobrar altura para as tarefas */
+body.tv .summary{grid-template-columns:auto auto minmax(0,1fr) auto;grid-template-rows:auto;gap:clamp(10px,.6vw,24px);margin-bottom:clamp(12px,.7vw,28px)}
+body.tv .summary>.kpi:nth-child(1){grid-area:1/1}body.tv .summary>.kpi:nth-child(2){grid-area:1/2}
+body.tv .summary>.heatbox{grid-area:1/3}body.tv .summary>.qrbox{grid-area:1/4}
+body.tv .summary .kpi{flex-direction:column;align-items:flex-start;justify-content:center;gap:.2em;min-width:clamp(150px,8vw,340px)}
 body.tv .kpi,body.tv .heatbox,body.tv .qrbox{padding:clamp(12px,.75vw,30px) clamp(14px,.9vw,36px)}
 body.tv .kpi .l,body.tv .heatbox .l{font-size:clamp(11px,.7vw,28px)}
-body.tv .summary .kpi .v{font-size:clamp(48px,3vw,130px)}
+body.tv .summary .kpi .v{font-size:clamp(40px,2.4vw,104px)}
 body.tv .heat{gap:clamp(6px,.4vw,16px)}
 body.tv .ht{font-size:clamp(16px,.95vw,40px);padding:.35em .75em .35em .6em;gap:.4em}
 body.tv .ht svg{width:1.25em;height:1.25em}body.tv .ht b{font-size:.95em}
-body.tv .qrbox .qr{width:clamp(210px,11vw,480px);height:clamp(210px,11vw,480px)}
-body.tv .qrbox b{font-size:clamp(26px,1.6vw,68px)}
+body.tv .qrbox .qr{width:clamp(130px,6.5vw,280px);height:clamp(130px,6.5vw,280px)}
+body.tv .qrbox b{font-size:clamp(20px,1.15vw,50px)}
 body.tv .qrbox span{font-size:clamp(12px,.75vw,30px)}
-body.tv .qrbox small{font-size:clamp(16px,.95vw,40px)}
-body.tv .mx col.c-area{width:clamp(230px,13vw,560px)}
-body.tv .mx thead th{padding:clamp(10px,.6vw,24px) clamp(12px,.7vw,28px)}
-body.tv .mx thead th .d{font-size:clamp(24px,1.5vw,64px)}
-body.tv .mx thead th .s{font-size:clamp(12px,.75vw,30px)}
-body.tv .mx .area{font-size:clamp(16px,1vw,42px);padding:clamp(10px,.6vw,24px) clamp(12px,.7vw,28px)}
+body.tv .qrbox small{font-size:clamp(13px,.75vw,32px)}
+body.tv .mx col.c-area{width:calc(clamp(230px,13vw,560px)*var(--tvk,1))}
+body.tv .mx thead th{padding:calc(clamp(10px,.6vw,24px)*var(--tvk,1)) calc(clamp(12px,.7vw,28px)*var(--tvk,1))}
+body.tv .mx thead th .d{font-size:calc(clamp(24px,1.5vw,64px)*var(--tvk,1))}
+body.tv .mx thead th .s{font-size:calc(clamp(12px,.75vw,30px)*var(--tvk,1))}
+body.tv .mx .area{font-size:calc(clamp(16px,1vw,42px)*var(--tvk,1));padding:calc(clamp(10px,.6vw,24px)*var(--tvk,1)) calc(clamp(12px,.7vw,28px)*var(--tvk,1))}
 body.tv .tlab{gap:.5em}body.tv .tlab svg{width:1.15em;height:1.15em}
-body.tv .mx td.cell{padding:clamp(8px,.45vw,18px)}
-body.tv .task{padding:clamp(10px,.6vw,24px) clamp(12px,.75vw,30px);margin-bottom:clamp(10px,.5vw,20px);border-left-width:clamp(3px,.2vw,8px)}
-body.tv .task .x{font-size:clamp(22px,1.3vw,56px)}
-body.tv .task .who{font-size:clamp(18px,1vw,42px);gap:.35em}body.tv .task .who svg{width:.85em;height:.85em}
-body.tv .task .atag{font-size:clamp(11px,.6vw,26px)}
+body.tv .mx td.cell{padding:calc(clamp(8px,.45vw,18px)*var(--tvk,1))}
+body.tv .task{padding:calc(clamp(10px,.6vw,24px)*var(--tvk,1)) calc(clamp(12px,.75vw,30px)*var(--tvk,1));margin-bottom:calc(clamp(10px,.5vw,20px)*var(--tvk,1));border-left-width:calc(clamp(3px,.2vw,8px)*var(--tvk,1))}
+body.tv .task .x{font-size:calc(clamp(22px,1.3vw,56px)*var(--tvk,1))}
+body.tv .task .who{font-size:calc(clamp(18px,1vw,42px)*var(--tvk,1));gap:.35em}body.tv .task .who svg{width:.85em;height:.85em}
+body.tv .task .atag{font-size:calc(clamp(11px,.6vw,26px)*var(--tvk,1))}
 body.tv .notice{font-size:clamp(13px,.7vw,28px)}
 @media (max-width:560px){
   .tabs{gap:4px}.tab{flex:1 1 0;max-width:none;min-width:0;padding:10px 2px;font-size:14px;letter-spacing:.02em}.tab svg{display:none}
@@ -520,9 +532,9 @@ body.tv .notice{font-size:clamp(13px,.7vw,28px)}
 </div>
 <div class="toast" id="toast" role="status"></div>
 
-<script src="config.js?v=25"></script>
+<script src="config.js?v=27"></script>
 <script src="lib/qrcode.js"></script>
 <script src="lib/supabase.js"></script>
-<script src="app.js?v=25"></script>
+<script src="app.js?v=27"></script>
 </body>
 </html>

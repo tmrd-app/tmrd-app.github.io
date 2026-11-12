@@ -303,12 +303,16 @@ function renderBoard(){
   const grid = {}; rows.forEach(r => { const k = (TMAP[r.topico] ? r.topico : "outros") + "|" + r.data; (grid[k] ||= []).push(r); });
   const head = `<colgroup><col class="c-area">${days.map(() => "<col>").join("")}</colgroup>
     <thead><tr><th class="area">Tópicos</th>${days.map(d => `<th class="${d === state.today ? "today" : ""}"><span class="d">${d === state.today ? "Hoje" : DIAS3[dowOf(d)]}</span><span class="s">${ddmm(d)}</span></th>`).join("")}</tr></thead>`;
-  const body = TOPICS.map(t => `<tr><th class="area" scope="row"><span class="tlab">${t.i}<span>${t.n}</span></span></th>${days.map(d => {
+  // tópicos com tarefa nos dias mostrados vêm primeiro (na ordem de sempre); os vazios descem e ficam compactos
+  const has = (t) => days.some(d => grid[t.k+"|"+d]);
+  const ordered = [...TOPICS.filter(has), ...TOPICS.filter(t => !has(t))];
+  const body = ordered.map(t => `<tr class="${has(t) ? "" : "vazio"}"><th class="area" scope="row"><span class="tlab">${t.i}<span>${t.n}</span></span></th>${days.map(d => {
       const items = (grid[t.k+"|"+d] || []).sort(sortRows);
       const cls = `cell${d === state.today ? " today" : ""}${d < state.today ? " past" : ""}`;
       return `<td class="${cls}">${items.map(r => `<div class="task ed" data-id="${r.id}" title="Toque para editar"><span class="x">${esc(r.atividade)}</span>${r.responsavel ? `<span class="who">${USER_IC}${esc(r.responsavel)}${areaTag(areaOf(r.responsavel))}</span>` : ""}${r.topico === "outros" && r.topicoOutro ? `<span class="m">${esc(r.topicoOutro)}</span>` : ""}</div>`).join("")}</td>`;
     }).join("")}</tr>`).join("");
   $("mx").innerHTML = head + `<tbody>${body}</tbody>`;
+  fitTV();
 }
 
 let refreshing = null;
@@ -401,6 +405,8 @@ document.addEventListener("click", async e => {
 function show(v){
   const tv = v === "tv"; const view = tv ? "painel" : v;
   document.body.classList.toggle("tv", tv);
+  if (tv) scrollTo(0, 0);
+  requestAnimationFrame(fitTV);
   if (tv && state.dayOffset !== 0) { state.dayOffset = 0; refresh(); }
   $("v-lancar").hidden = view !== "lancar"; $("v-painel").hidden = view !== "painel"; $("v-indicadores").hidden = view !== "indicadores";
   document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.v === view));
@@ -640,6 +646,24 @@ function seedDemo(){
     mk({ data:addDays(t,4), topico:"terceiros", atividade:"Pintura do piso da expedição por empresa contratada" }),
   ];
 }
+
+/* ---------- TV: diminui a grade (--tvk) até todas as tarefas caberem na tela, sem rolar ---------- */
+function fitTV(){
+  const wrap = document.querySelector(".mx-wrap"), root = document.documentElement;
+  root.style.removeProperty("--tvk");
+  if (!document.body.classList.contains("tv") || !wrap) return;
+  // basta caber até a última linha com tarefa; os tópicos vazios (lá embaixo) podem ficar fora da tela
+  const rows = wrap.querySelectorAll("tbody tr:not(.vazio)"); if (!rows.length) return;
+  const top = () => wrap.getBoundingClientRect().top, need = () => rows[rows.length-1].getBoundingClientRect().bottom - top();
+  const avail = () => innerHeight - (top() + scrollY) - 12;   // a TV fica sempre no topo da página
+  let k = 1;
+  for (let i = 0; i < 6 && need() > avail() && k > .55; i++) {
+    k = Math.max(.55, k * Math.min(.97, avail() / need()));
+    root.style.setProperty("--tvk", k.toFixed(3));
+  }
+}
+addEventListener("resize", () => requestAnimationFrame(fitTV));
+document.fonts?.ready.then(fitTV);   // a fonte muda a altura das linhas
 
 /* ---------- banner fixo: reserva a altura certa abaixo dele ---------- */
 const topEl = document.querySelector(".top");
