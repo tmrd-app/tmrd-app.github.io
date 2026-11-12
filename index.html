@@ -316,6 +316,40 @@ body.tv .tv-enter{display:none}
 body.tv .qrbox .qr{width:210px;height:210px}
 body.tv .qrbox small{font-size:16px}
 body.tv .qrbox b{font-size:26px}
+/* modo TV em tela cheia: usa toda a largura e as letras crescem junto com a tela (vw = 1% da largura) */
+body.tv .wrap{max-width:none;padding-left:1.4vw;padding-right:1.4vw}
+body.tv .top .wrap{padding-block:clamp(12px,.7vw,28px)}
+body.tv .hazard{height:clamp(7px,.4vw,16px);background-size:auto}
+body.tv .brand h1{font-size:clamp(54px,3.2vw,140px)}
+body.tv .brand p{font-size:clamp(15px,.85vw,36px)}
+body.tv .live{font-size:clamp(11px,.65vw,26px)}body.tv .live i{width:clamp(8px,.45vw,18px);height:clamp(8px,.45vw,18px)}
+body.tv .clock{font-size:clamp(32px,1.9vw,84px)}body.tv .clock small{font-size:clamp(10px,.6vw,24px)}
+body.tv main{padding-top:clamp(18px,1vw,40px)}
+body.tv .bar h2{font-size:clamp(28px,1.8vw,76px)}
+body.tv .bar .btn{font-size:clamp(13px,.7vw,26px)}
+body.tv .summary{grid-template-columns:clamp(230px,13vw,560px) minmax(0,1fr) auto;gap:clamp(10px,.6vw,24px);margin-bottom:clamp(16px,.9vw,36px)}
+body.tv .kpi,body.tv .heatbox,body.tv .qrbox{padding:clamp(12px,.75vw,30px) clamp(14px,.9vw,36px)}
+body.tv .kpi .l,body.tv .heatbox .l{font-size:clamp(11px,.7vw,28px)}
+body.tv .summary .kpi .v{font-size:clamp(48px,3vw,130px)}
+body.tv .heat{gap:clamp(6px,.4vw,16px)}
+body.tv .ht{font-size:clamp(16px,.95vw,40px);padding:.35em .75em .35em .6em;gap:.4em}
+body.tv .ht svg{width:1.25em;height:1.25em}body.tv .ht b{font-size:.95em}
+body.tv .qrbox .qr{width:clamp(210px,11vw,480px);height:clamp(210px,11vw,480px)}
+body.tv .qrbox b{font-size:clamp(26px,1.6vw,68px)}
+body.tv .qrbox span{font-size:clamp(12px,.75vw,30px)}
+body.tv .qrbox small{font-size:clamp(16px,.95vw,40px)}
+body.tv .mx col.c-area{width:clamp(230px,13vw,560px)}
+body.tv .mx thead th{padding:clamp(10px,.6vw,24px) clamp(12px,.7vw,28px)}
+body.tv .mx thead th .d{font-size:clamp(24px,1.5vw,64px)}
+body.tv .mx thead th .s{font-size:clamp(12px,.75vw,30px)}
+body.tv .mx .area{font-size:clamp(16px,1vw,42px);padding:clamp(10px,.6vw,24px) clamp(12px,.7vw,28px)}
+body.tv .tlab{gap:.5em}body.tv .tlab svg{width:1.15em;height:1.15em}
+body.tv .mx td.cell{padding:clamp(8px,.45vw,18px)}
+body.tv .task{padding:clamp(10px,.6vw,24px) clamp(12px,.75vw,30px);margin-bottom:clamp(10px,.5vw,20px);border-left-width:clamp(3px,.2vw,8px)}
+body.tv .task .x{font-size:clamp(22px,1.3vw,56px)}
+body.tv .task .who{font-size:clamp(18px,1vw,42px);gap:.35em}body.tv .task .who svg{width:.85em;height:.85em}
+body.tv .task .atag{font-size:clamp(11px,.6vw,26px)}
+body.tv .notice{font-size:clamp(13px,.7vw,28px)}
 @media (max-width:560px){
   .tabs{gap:4px}.tab{flex:1 1 0;max-width:none;min-width:0;padding:10px 2px;font-size:14px;letter-spacing:.02em}.tab svg{display:none}
   .mx .area{font-size:13px;text-transform:none;letter-spacing:0;overflow-wrap:break-word;padding:10px 8px}
@@ -486,9 +520,9 @@ body.tv .qrbox b{font-size:26px}
 </div>
 <div class="toast" id="toast" role="status"></div>
 
-<script src="config.js?v=24"></script>
+<script src="config.js?v=25"></script>
 <script src="lib/qrcode.js"></script>
 <script src="lib/supabase.js"></script>
-<script src="app.js?v=24"></script>
+<script src="app.js?v=25"></script>
 </body>
 </html>
