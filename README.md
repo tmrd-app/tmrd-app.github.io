@@ -25,7 +25,8 @@ Instalar o app é opcional: quem preferir tem o atalho na tela inicial (abaixo).
 ## 4. Instalar nos celulares (opcional)
 - **Android (Chrome):** abrir o link → botão "Instalar app" no topo (ou menu ⋮ → Instalar app).
 - **iPhone (Safari):** abrir o link → Compartilhar → Adicionar à Tela de Início.
-- **TV:** abrir `.../#tv` no navegador da TV ou do PC ligado nela.
+- **TV:** abrir `.../#tv` no navegador da TV ou do PC ligado nela. No modo TV, qualquer clique ou tecla coloca em tela cheia.
+- **TV sem mouse (recomendado):** no PC ligado na TV, use `tv/TMRD-TV.bat`: abre o Edge em modo quiosque, já em tela cheia no `#tv`. Para abrir sozinho ao ligar o PC, copie o arquivo para a pasta `shell:startup` (Win+R). Para sair: Alt+F4.
 
 ## Responsáveis
 A lista de supervisores e gerentes fica em `RESPONSAVEIS`, no início do `app.js`. Para incluir ou tirar alguém, edite a lista e publique (troque a versão, abaixo). Quem não está na lista pode escolher "Outro" e digitar o nome.

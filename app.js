@@ -411,7 +411,19 @@ function show(v){
   $("v-lancar").hidden = view !== "lancar"; $("v-painel").hidden = view !== "painel"; $("v-indicadores").hidden = view !== "indicadores";
   document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.v === view));
   if (tv) keepAwake();
+  paintFsHint();
 }
+/* ---------- TV em tela cheia: o navegador só permite depois de um clique ou tecla,
+   então no modo TV qualquer clique/tecla (ou o controle da TV) já coloca em tela cheia ---------- */
+const isTV = () => document.body.classList.contains("tv");
+const goFull = () => { if (isTV() && !document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(()=>{}); };
+function paintFsHint(){ $("fsHint").hidden = !isTV() || !!document.fullscreenElement || !document.fullscreenEnabled; }
+addEventListener("pointerdown", e => { if (!e.target.closest("#tvOff")) goFull(); });
+addEventListener("keydown", e => { if (e.key !== "Escape") goFull(); });
+document.addEventListener("fullscreenchange", () => { paintFsHint(); requestAnimationFrame(fitTV); });
+// esconde o cursor do mouse na TV depois de 3 s parado
+let cursorT = null;
+addEventListener("mousemove", () => { document.body.classList.remove("nocursor"); clearTimeout(cursorT); if (isTV()) cursorT = setTimeout(() => document.body.classList.add("nocursor"), 3000); });
 function route(){ const h = location.hash.slice(1); show(["lancar","painel","tv","indicadores"].includes(h) ? h : (innerWidth >= 1000 ? "painel" : "lancar")); }
 document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => { location.hash = t.dataset.v; }));
 $("tvOn").addEventListener("click", () => { location.hash = "tv"; document.documentElement.requestFullscreen?.().catch(()=>{}); });

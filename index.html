@@ -312,6 +312,9 @@ body.tv .mx .area{font-size:16px}
 .tv-exit{display:none}
 body.tv .tv-exit{display:inline-flex}
 body.tv .tv-enter{display:none}
+.fshint{position:fixed;left:50%;bottom:clamp(14px,1.2vw,40px);transform:translateX(-50%);z-index:70;background:var(--blue);color:#fff;font-weight:600;font-size:clamp(14px,.9vw,34px);padding:.7em 1.3em;border-radius:999px;box-shadow:0 6px 24px rgba(0,0,0,.5);animation:fsPulse 2s ease-in-out infinite;pointer-events:none}
+@keyframes fsPulse{50%{opacity:.75}}
+body.tv.nocursor,body.tv.nocursor *{cursor:none!important}
 
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(calc(100% + 60px));background:#3ecf8e;color:#04150d;font-weight:700;padding:12px 18px;border-radius:10px;z-index:80;transition:transform .25s;max-width:calc(100% - 32px)}
 .toast.show{transform:translateX(-50%) translateY(0)}
@@ -531,10 +534,11 @@ body.tv .notice{font-size:clamp(13px,.7vw,28px)}
   </div>
 </div>
 <div class="toast" id="toast" role="status"></div>
+<div class="fshint" id="fsHint" hidden>Clique em qualquer lugar ou aperte qualquer tecla para <b>tela cheia</b></div>
 
-<script src="config.js?v=27"></script>
+<script src="config.js?v=28"></script>
 <script src="lib/qrcode.js"></script>
 <script src="lib/supabase.js"></script>
-<script src="app.js?v=27"></script>
+<script src="app.js?v=28"></script>
 </body>
 </html>
