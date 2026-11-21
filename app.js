@@ -324,8 +324,10 @@ async function refresh(){
       const kFrom = addDays(state.today, -(state.kDays-1));
       const [board, mine, krows] = await Promise.all([api.range(days[0], days[days.length-1]), api.mine(state.today), api.range(kFrom, state.today)]);
       state.board = board; state.mine = mine; state.krows = krows;
+      state.conectado = true;
       setLive(true, DEMO ? "Demonstração" : "Ao vivo");
-    } catch(_) { setLive(false, "Sem conexão"); }
+    } catch(_) { state.conectado = false; setLive(false, "Sem conexão"); }
+    $("connAlert").hidden = state.conectado !== false;   // sem dados do banco: avisa em vez de mostrar zero
     renderMine(); renderBoard(); renderKpi();
   })();
   try { await refreshing; } finally { refreshing = null; }
@@ -478,8 +480,19 @@ $("kRange").addEventListener("click", e => {
   refresh();
 });
 const pct = (n) => `${Math.round(n*100)}%`;
+// Sem conexão com o banco: os indicadores mostram o aviso, não zero (zero parecia "nenhuma tarefa")
+function kpiSemConexao(from){
+  $("kPeriod").textContent = `${ddmm(from)} a ${ddmm(state.today)}`;
+  ["iAdHoje","iAdPer","iTot"].forEach(id => { $(id).textContent = "—"; $(id).className = "v"; });
+  ["iAdHojeH","iAdPerH","iMedia"].forEach(id => { $(id).textContent = "sem conexão com o banco de dados"; });
+  $("iPend").innerHTML = `<span>Sem conexão com o banco de dados</span>`;
+  ["iTrend","iTop","iHora","iRiscoArea","iResp"].forEach(id => { $(id).innerHTML = `<div class="kempty">Sem conexão com o banco de dados. Se estiver no Wi-Fi, tente pelos dados móveis (4G).</div>`; });
+  $("iHoraH").textContent = "";
+}
+
 function renderKpi(){
   const N = state.kDays, from = addDays(state.today, -(N-1));
+  if (state.conectado === false) return kpiSemConexao(from);
   const rows = state.krows.filter(r => r.data >= from && r.data <= state.today);
   const days = Array.from({length:N}, (_,i) => addDays(from, i));
   $("kPeriod").textContent = `${ddmm(from)} a ${ddmm(state.today)}`;
@@ -642,7 +655,7 @@ $("qrCopy").addEventListener("click", async () => {
   catch(_) { const r = document.createRange(); r.selectNodeContents($("qrUrl")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Selecione e copie o link", true); }
 });
 
-function setLive(on, txt){ $("live").classList.toggle("on", on); $("liveTxt").textContent = txt; }
+function setLive(on, txt){ $("live").classList.toggle("on", on); $("live").classList.toggle("erro", !on && txt === "Sem conexão"); $("liveTxt").textContent = txt; }
 
 /* ---------- dados de exemplo (só no modo demonstração) ---------- */
 function seedDemo(){
@@ -694,7 +707,7 @@ async function boot(){
   await refresh();
   state.sb.channel("tmrd-live")
     .on("postgres_changes", { event:"*", schema:"public", table:TABLE }, () => refresh())
-    .subscribe(s => { if (s === "SUBSCRIBED") setLive(true, "Ao vivo"); else if (s === "CHANNEL_ERROR" || s === "TIMED_OUT") setLive(false, "Reconectando"); });
+    .subscribe(s => { if (s === "SUBSCRIBED") setLive(true, "Ao vivo"); else if (s === "CHANNEL_ERROR" || s === "TIMED_OUT") setLive(false, state.conectado === false ? "Sem conexão" : "Reconectando"); });
   setInterval(refresh, 60000);          // rede de segurança caso o tempo real caia
   addEventListener("online", flushOutbox); flushOutbox();
 }

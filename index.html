@@ -68,6 +68,9 @@ html,body{overflow-x:hidden}
 main{padding-block:18px 60px}
 .notice{border:1px dashed var(--line);border-radius:var(--r);padding:12px 14px;color:var(--muted);font-size:13px;margin-bottom:16px}
 .notice strong{color:var(--fg)}
+.conn{background:rgba(255,77,79,.12);border:1px solid var(--crit);border-radius:var(--r);padding:12px 14px;color:var(--fg);font-size:14px;line-height:1.45;margin-bottom:16px}
+.conn strong{color:var(--crit)}.conn span{display:block;margin-top:4px;color:var(--amber);font-weight:600}
+.live.erro{color:var(--crit)}.live.erro i{background:var(--crit)}
 .pending{background:rgba(245,180,0,.12);color:var(--amber);border-radius:var(--r);padding:10px 14px;font-weight:600;font-size:13px;margin-bottom:14px}
 .ios{display:flex;gap:12px;align-items:flex-start;background:var(--panel);border:1px solid var(--blue);border-radius:var(--r);padding:12px 14px;margin-bottom:16px;font-size:13px}
 .ios p{margin:0;flex:1;color:var(--muted)} .ios b{color:var(--fg)}
@@ -364,7 +367,7 @@ body.tv .task{padding:calc(clamp(10px,.6vw,24px)*var(--tvk,1)) calc(clamp(12px,.
 body.tv .task .x{font-size:calc(clamp(22px,1.3vw,56px)*var(--tvk,1))}
 body.tv .task .who{font-size:calc(clamp(18px,1vw,42px)*var(--tvk,1));gap:.35em}body.tv .task .who svg{width:.85em;height:.85em}
 body.tv .task .atag{font-size:calc(clamp(11px,.6vw,26px)*var(--tvk,1))}
-body.tv .notice{font-size:clamp(13px,.7vw,28px)}
+body.tv .notice,body.tv .conn{font-size:clamp(13px,.7vw,28px)}
 @media (max-width:560px){
   .tabs{gap:4px}.tab{flex:1 1 0;max-width:none;min-width:0;padding:10px 2px;font-size:14px;letter-spacing:.02em}.tab svg{display:none}
   .mx .area{font-size:13px;text-transform:none;letter-spacing:0;overflow-wrap:break-word;padding:10px 8px}
@@ -376,7 +379,7 @@ body.tv .notice{font-size:clamp(13px,.7vw,28px)}
   .card{grid-template-columns:auto 1fr}
   .card .side{grid-column:1/-1;flex-direction:row;justify-content:space-between;align-items:center}
   .kpi .v{font-size:38px}
-  .live{display:none}
+  .live{font-size:10px;letter-spacing:.06em;gap:5px}
   .mx col.c-area{width:140px}
   .tlab svg{display:none}
   table.mx{min-width:520px}
@@ -411,6 +414,7 @@ body.tv .notice{font-size:clamp(13px,.7vw,28px)}
 <div class="top-space" aria-hidden="true"></div>
 <main class="wrap">
   <div class="notice" id="dbNotice" hidden></div>
+  <div class="conn" id="connAlert" role="alert" hidden><strong>Sem conexão com o banco de dados.</strong> As tarefas e os indicadores não puderam ser carregados. Os lançamentos feitos agora ficam guardados no aparelho e são enviados quando a conexão voltar. <span>Se estiver no Wi-Fi, tente pelos dados móveis (4G).</span></div>
   <div class="pending" id="pending" hidden></div>
   <div class="instbar" id="install" hidden><span>Instale o TMRD no celular para abrir mais rápido.</span><button class="inst" id="installBtn" type="button">Instalar app</button></div>
   <div class="ios" id="iosHint" hidden><p><b>Instale no iPhone:</b> toque em Compartilhar e depois em “Adicionar à Tela de Início”. O TMRD abre como app, em tela cheia.</p><button id="iosClose" aria-label="Fechar">×</button></div>
@@ -536,9 +540,9 @@ body.tv .notice{font-size:clamp(13px,.7vw,28px)}
 <div class="toast" id="toast" role="status"></div>
 <div class="fshint" id="fsHint" hidden>Clique em qualquer lugar ou aperte qualquer tecla para <b>tela cheia</b></div>
 
-<script src="config.js?v=28"></script>
+<script src="config.js?v=29"></script>
 <script src="lib/qrcode.js"></script>
 <script src="lib/supabase.js"></script>
-<script src="app.js?v=28"></script>
+<script src="app.js?v=29"></script>
 </body>
 </html>
